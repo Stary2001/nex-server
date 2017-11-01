@@ -1,6 +1,7 @@
 import asyncio
 import struct
 from rc4 import RC4
+from binascii import hexlify
 
 class PRUDPV0Packet:
     OP_SYN = 0
@@ -13,7 +14,7 @@ class PRUDPV0Packet:
     FLAG_NEEDS_ACK = 0x4
     FLAG_HAS_SIZE = 0x8
 
-    def __init__(self, source, dest, op, flags, session, sig, seq, conn_sig=None, fragment=None, data_size=None, data=None):
+    def __init__(self, source=None, dest=None, op=None, flags=None, session=None, sig=None, seq=None, conn_sig=None, fragment=None, data_size=None, data=None):
         self.source = source
         self.dest = dest
         self.op = op
@@ -26,8 +27,32 @@ class PRUDPV0Packet:
         self.data_size = data_size
         self.data = data
 
-    @classmethod
-    def decode(self, data, rc4_state):
+    def __repr__(self):
+        s = "source={:02x}, dest={:02x}, op={}, flags={:04x}, session={:02x}, sig={:08x}, seq={:02x}".format(self.source, self.dest, self.op, self.flags, self.session, self.sig, self.seq)
+
+        if self.conn_sig != None:
+            s += ", conn_sig={:08x}".format(self.conn_sig)
+        else:
+            s += ", fragment={:02x}".format(self.fragment)
+
+        if self.data_size != None:
+            s += ", data_size={:04x}".format(self.data_size)
+        if self.data != None:
+            s += "\ndata: {}".format(hexlify(self.data))
+        return s
+
+    @staticmethod
+    def calc_checksum(checksum, data):
+        words = struct.unpack_from("<"+"I"*(len(data)//4),data)
+        temp = sum(words) & 0xffffffff
+
+        checksum += sum(data[-(len(data) & 3):])
+        checksum += sum(struct.pack("I", temp))
+
+        return checksum & 0xff
+
+    @staticmethod
+    def decode(data, rc4_state):
         source = data[0]
         dest = data[1]
 
@@ -41,6 +66,8 @@ class PRUDPV0Packet:
 
         conn_sig = None
         fragment = None
+        data_size = None
+        packet_data = None
 
         if op == PRUDPV0Packet.OP_SYN or op == PRUDPV0Packet.OP_CONNECT:
             header_size = 15
@@ -53,18 +80,6 @@ class PRUDPV0Packet:
             data_size = struct.unpack("<H", data[header_size:header_size+2])
             header_size += 2
 
-        print("source={:02x}, dest={:02x}, op={}, flags={:04x}, session={:02x}, sig={:08x}, seq={:02x}".format(source, dest, op, flags, session, sig, seq), end="")
-
-        if conn_sig != None:
-            print(", conn_sig={:08x}".format(conn_sig), end="")
-        else:
-            print(", fragment={:02x}".format(fragment), end="")
-
-        if data_size != None:
-            print(", data_size={:04x}".format(data_size))
-        else:
-            print()
-
         return PRUDPV0Packet(source=source,
                              dest=dest,
                              op=op,
@@ -75,26 +90,31 @@ class PRUDPV0Packet:
                              conn_sig=conn_sig,
                              fragment=fragment,
                              data_size=data_size,
-                             data=data[header_size:header_size+data_size])
+                             data=packet_data)
 
     def encode(self, rc4_state):
+        self.sig = 0
+        self.conn_sig = 0
+
         data = b""
         data += struct.pack("BB", self.source, self.dest)
         data += struct.pack("<H", (self.op & 0xF) | (self.flags << 4))
         data += struct.pack("B", self.session)
         data += struct.pack("<I", self.sig)
         data += struct.pack("<H", self.seq)
+
         if self.op == PRUDPV0Packet.OP_SYN or self.op == PRUDPV0Packet.OP_CONNECT:
             data += struct.pack("<I", self.conn_sig)
         else:
             data += struct.pack("<B", self.fragment)
 
-        if self.flags & PRUDPV0Packet.FLAG_HAS_SIZE:
+        if self.flags & PRUDPV0Packet.FLAG_HAS_SIZE != 0:
             data += struct.pack("<H", self.data_size)
 
-        data += rc4_state.crypt(self.data)
+        if self.data:
+            data += rc4_state.crypt(self.data)
 
-        data += struct.pack("B", self.calc_checksum(sum("ridfebb9".encode("ascii")), data))
+        data += struct.pack("B", PRUDPV0Packet.calc_checksum(sum("ridfebb9".encode("ascii")), data))
         return data
 
 class PRUDPV0PacketOut(PRUDPV0Packet):
@@ -114,15 +134,6 @@ class PRUDPClient:
         self.cur_seq = 0
         self.state = PRUDPClient.STATE_EXPECT_SYN
 
-    def calc_checksum(self, checksum, data):
-        words = struct.unpack_from("<"+"I"*(len(data)//4),data)
-        temp = sum(words) & 0xffffffff
-
-        checksum += sum(data[-(len(data) & 3):])
-        checksum += sum(struct.pack("I", temp))
-
-        return checksum & 0xff
-
     def decode_packet(self, data):
         return PRUDPV0Packet.decode(data, self.rc4_state_decrypt)
 
@@ -132,34 +143,46 @@ class PRUDPClient:
     def handle_packet(self, packet):
         if self.state == PRUDPClient.STATE_EXPECT_SYN:
             if packet.op == PRUDPV0Packet.OP_SYN: # SYN
+                print("Got SYN!")
+                print(packet)
                 self.state = PRUDPClient.STATE_EXPECT_CONNECT
 
+                packet_out = PRUDPV0PacketOut()
                 packet_out.source = 0xa1
                 packet_out.dest = 0xaf
                 packet_out.op = PRUDPV0Packet.OP_SYN
                 packet_out.flags = PRUDPV0Packet.FLAG_ACK | PRUDPV0Packet.FLAG_HAS_SIZE
                 packet_out.session = packet.session
                 packet_out.seq = packet.seq
-                packet_out.size = 0
+                packet_out.data_size = 0
 
-                return packet_out.encode(self.rc4_state_encrypt)
+                p = packet_out.encode(self.rc4_state_encrypt)
+                print("Sending", packet_out)
+                return p
             else:
+                #print("Got a non-SYN in EXPECT_SYN")
                 # return err
                 pass
         elif self.state == PRUDPClient.STATE_EXPECT_CONNECT:
             if packet.op == PRUDPV0Packet.OP_CONNECT:
+                print("Got CONNECT!")
+                print(packet)
                 self.state = PRUDPClient.STATE_CONNECTED
 
+                packet_out = PRUDPV0PacketOut()
                 packet_out.source = 0xa1
                 packet_out.dest = 0xaf
                 packet_out.op = PRUDPV0Packet.OP_CONNECT
                 packet_out.flags = PRUDPV0Packet.FLAG_ACK | PRUDPV0Packet.FLAG_HAS_SIZE
                 packet_out.session = packet.session
                 packet_out.seq = packet.seq
-                packet_out.size = 0
+                packet_out.data_size = 0
 
-                return packet_out.encode(self.rc4_state_encrypt)
+                p = packet_out.encode(self.rc4_state_encrypt)
+                print("Sending", packet_out)
+                return p
             else:
+                #print("Got a non-CONNECT in EXPECT_CONNECT")
                 # return err
                 pass
 
@@ -175,6 +198,7 @@ class PRUDPProtocol(asyncio.DatagramProtocol):
         self.transport = transport
 
     def datagram_received(self, data, addr):
+        #print(data,addr)
         if not addr in self.connections:
             client = PRUDPClient(b"CD&ML")
             self.connections[addr] = client
@@ -182,4 +206,6 @@ class PRUDPProtocol(asyncio.DatagramProtocol):
             client = self.connections[addr]
 
         packet = client.handle_data(data)
-        self.transport.sendto(packet, addr)
+        if packet != None:
+            print("Sending data", packet)
+            self.transport.sendto(packet, addr)
