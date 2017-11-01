@@ -3,23 +3,33 @@ import struct
 from rc4 import RC4
 
 class PRUDPV0Packet:
+    OP_SYN = 0
+    OP_CONNECT = 1
+    OP_DATA = 2
+    OP_DISCONNECT = 3
+
+    FLAG_ACK = 0x1
     FLAG_RELIABLE = 0x2
     FLAG_NEEDS_ACK = 0x4
     FLAG_HAS_SIZE = 0x8
 
-    def __init__(self, direction, op, flags, seq, conn_sig, session, sig):
-        self.direction = direction
+    def __init__(self, source, dest, op, flags, session, sig, seq, conn_sig=None, fragment=None, data_size=None, data=None):
+        self.source = source
+        self.dest = dest
         self.op = op
         self.flags = flags
-        self.seq = seq
-        self.conn_sig = conn_sig
         self.session = session
         self.sig = sig
+        self.seq = seq
+        self.conn_sig = conn_sig
+        self.fragment = fragment
+        self.data_size = data_size
+        self.data = data
 
     @classmethod
     def decode(self, data, rc4_state):
-        # Decode the packet header..
-        direction = struct.unpack("<H", data[0:2])[0]
+        source = data[0]
+        dest = data[1]
 
         op_flags = struct.unpack("<H", data[2:4])[0]
         op = op_flags & 0xF
@@ -28,14 +38,69 @@ class PRUDPV0Packet:
         session = data[4]
         sig = struct.unpack("<I", data[5:9])[0]
         seq = struct.unpack("<H", data[9:11])[0]
-        conn_sig = struct.unpack("<I", data[11:15])[0]
 
-        print("direction={:04x}, op_flags={:04x}, session={:02x}, sig={:08x}, seq={:02x}, conn_sig={:08x}".format(direction, op_flags, session, sig, seq, conn_sig))
+        conn_sig = None
+        fragment = None
 
-        return PRUDPV0Packet(direction=direction, op=op, flags=flags, seq=seq, conn_sig=conn_sig, session=session, sig=sig)
+        if op == PRUDPV0Packet.OP_SYN or op == PRUDPV0Packet.OP_CONNECT:
+            header_size = 15
+            conn_sig = struct.unpack("<I", data[11:15])[0]
+        else:
+            header_size = 12
+            fragment = data[11]
+
+        if flags & PRUDPV0Packet.FLAG_HAS_SIZE != 0:
+            data_size = struct.unpack("<H", data[header_size:header_size+2])
+            header_size += 2
+
+        print("source={:02x}, dest={:02x}, op={}, flags={:04x}, session={:02x}, sig={:08x}, seq={:02x}".format(source, dest, op, flags, session, sig, seq), end="")
+
+        if conn_sig != None:
+            print(", conn_sig={:08x}".format(conn_sig), end="")
+        else:
+            print(", fragment={:02x}".format(fragment), end="")
+
+        if data_size != None:
+            print(", data_size={:04x}".format(data_size))
+        else:
+            print()
+
+        return PRUDPV0Packet(source=source,
+                             dest=dest,
+                             op=op,
+                             flags=flags,
+                             session=session,
+                             sig=sig,
+                             seq=seq,
+                             conn_sig=conn_sig,
+                             fragment=fragment,
+                             data_size=data_size,
+                             data=data[header_size:header_size+data_size])
 
     def encode(self, rc4_state):
-        pass
+        data = b""
+        data += struct.pack("BB", self.source, self.dest)
+        data += struct.pack("<H", (self.op & 0xF) | (self.flags << 4))
+        data += struct.pack("B", self.session)
+        data += struct.pack("<I", self.sig)
+        data += struct.pack("<H", self.seq)
+        if self.op == PRUDPV0Packet.OP_SYN or self.op == PRUDPV0Packet.OP_CONNECT:
+            data += struct.pack("<I", self.conn_sig)
+        else:
+            data += struct.pack("<B", self.fragment)
+
+        if self.flags & PRUDPV0Packet.FLAG_HAS_SIZE:
+            data += struct.pack("<H", self.data_size)
+
+        data += rc4_state.crypt(self.data)
+
+        data += struct.pack("B", self.calc_checksum(sum("ridfebb9".encode("ascii")), data))
+        return data
+
+class PRUDPV0PacketOut(PRUDPV0Packet):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.direction = 0xafa1
 
 class PRUDPClient:
     STATE_EXPECT_SYN = 0
@@ -46,51 +111,57 @@ class PRUDPClient:
         self.rc4_state_encrypt = RC4(rc4_key)
         self.rc4_state_decrypt = RC4(rc4_key)
 
-        state = PRUDPClient.STATE_EXPECT_SYN
+        self.cur_seq = 0
+        self.state = PRUDPClient.STATE_EXPECT_SYN
 
-    def calc_checksum(self, checksum,data):
+    def calc_checksum(self, checksum, data):
         words = struct.unpack_from("<"+"I"*(len(data)//4),data)
         temp = sum(words) & 0xffffffff
 
-        checksum+=sum(data[-(len(data) & 3):])
-        checksum+=sum(struct.pack("I", temp))
+        checksum += sum(data[-(len(data) & 3):])
+        checksum += sum(struct.pack("I", temp))
 
         return checksum & 0xff
 
-
     def decode_packet(self, data):
-        return PRUDPV0Packet.decode(data,self.rc4_state_decrypt)
-
-    def encode_packet(self):
-        # ...
-        # return a bytestring
-        data=b""
-        data+=struct.pack("BB",self.source,self.dest)
-        data+=struct.pack("<H",self.op | self.flags)
-        data+=struct.pack("B",self.session)
-        data+=struct.pack("<I",self.sig)
-        data+=struct.pack("<H",self.seq)
-        data+=struct.pack("<I",0)
-        data+=struct.pack("<H",0)
-        data+=struct.pack("B",self.calc_checksum(sum("ridfebb9".encode("ascii")),data))
-        return data
+        return PRUDPV0Packet.decode(data, self.rc4_state_decrypt)
 
     def handle_data(self, data):
         return self.handle_packet(self.decode_packet(data))
 
     def handle_packet(self, packet):
-        # ...
-        # do something here?
-        if True:
-            self.source = 0xa1
-            self.dest = 0xaf
-            self.op = packet.op
-            self.flags = 0x90
-            self.sig = packet.conn_sig
-            self.session = packet.session
-            self.seq = packet.seq
-            self.size = 0
-            return self.encode_packet()
+        if self.state == PRUDPClient.STATE_EXPECT_SYN:
+            if packet.op == PRUDPV0Packet.OP_SYN: # SYN
+                self.state = PRUDPClient.STATE_EXPECT_CONNECT
+
+                packet_out.source = 0xa1
+                packet_out.dest = 0xaf
+                packet_out.op = PRUDPV0Packet.OP_SYN
+                packet_out.flags = PRUDPV0Packet.FLAG_ACK | PRUDPV0Packet.FLAG_HAS_SIZE
+                packet_out.session = packet.session
+                packet_out.seq = packet.seq
+                packet_out.size = 0
+
+                return packet_out.encode(self.rc4_state_encrypt)
+            else:
+                # return err
+                pass
+        elif self.state == PRUDPClient.STATE_EXPECT_CONNECT:
+            if packet.op == PRUDPV0Packet.OP_CONNECT:
+                self.state = PRUDPClient.STATE_CONNECTED
+
+                packet_out.source = 0xa1
+                packet_out.dest = 0xaf
+                packet_out.op = PRUDPV0Packet.OP_CONNECT
+                packet_out.flags = PRUDPV0Packet.FLAG_ACK | PRUDPV0Packet.FLAG_HAS_SIZE
+                packet_out.session = packet.session
+                packet_out.seq = packet.seq
+                packet_out.size = 0
+
+                return packet_out.encode(self.rc4_state_encrypt)
+            else:
+                # return err
+                pass
 
 # TODO: big issue with this is stray UDP packets.
 # Time out connections after <some time> of lingering in STATE_EXPECT_SYN.
