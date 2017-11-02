@@ -93,8 +93,11 @@ class PRUDPV0Packet:
                              data=packet_data)
 
     def encode(self, rc4_state):
-        self.sig = 0
-        self.conn_sig = 0
+        if self.sig == None:
+            self.sig = 0
+
+        if self.conn_sig == None:
+            self.conn_sig = 0
 
         data = b""
         data += struct.pack("BB", self.source, self.dest)
@@ -133,6 +136,8 @@ class PRUDPClient:
 
         self.cur_seq = 0
         self.state = PRUDPClient.STATE_EXPECT_SYN
+
+        self.last_sig = None
 
     def decode_packet(self, data):
         return PRUDPV0Packet.decode(data, self.rc4_state_decrypt)
@@ -177,6 +182,7 @@ class PRUDPClient:
                 packet_out.session = packet.session
                 packet_out.seq = packet.seq
                 packet_out.data_size = 0
+                packet_out.sig = packet.conn_sig
 
                 p = packet_out.encode(self.rc4_state_encrypt)
                 print("Sending", packet_out)
@@ -185,7 +191,9 @@ class PRUDPClient:
                 #print("Got a non-CONNECT in EXPECT_CONNECT")
                 # return err
                 pass
-
+        elif self.state == PRUDPClient.STATE_CONNECTED:
+            print("Connected:")
+            print(packet)
 # TODO: big issue with this is stray UDP packets.
 # Time out connections after <some time> of lingering in STATE_EXPECT_SYN.
 
