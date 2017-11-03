@@ -10,6 +10,7 @@ class AuthenticationProtocol:
 	def login(self, device_id):
 		print("LOGIN!!!!!", device_id)
 
-		result = 0
+		success = False
+		result = 0x80010005
 		user_id = 0
-		return (result, user_id, b't o k e n', 'connection_string_blah_blah', b'\x00'*7, 'idk_unk_blah')
+		return (success, result, (result, user_id, b't o k e n', 'connection_string_blah_blah', b'\x00'*7, 'idk_unk_blah'))

@@ -40,11 +40,15 @@ def outgoing(*args):
 		@functools.wraps(f)
 		def func(self, data):
 			res = f(self, data)
+			if len(res) != 3:
+				print("Outgoing arg packing: function returned a tuple of length other than 3.")
+				return (False, 0x80010005, None) # "Core::Exception",
 			data = b''
-	
+			ret = []
+
 			for i, k in enumerate(args):
-				data += pack(k, res[i])
-			return data
+				data += pack(k, res[2][i])
+			return (res[0], res[1], data)
 		return func
 	return decorator
 

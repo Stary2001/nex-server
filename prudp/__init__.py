@@ -1,2 +1,2 @@
 from prudp.v0packet import PRUDPV0Packet, PRUDPV0PacketOut
-from prudp.server import PRUDPProtocol
+from prudp.nex_server import NEXProtocol
