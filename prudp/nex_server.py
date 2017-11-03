@@ -16,6 +16,7 @@ class NEXClient(PRUDPClient):
     def __init__(self, rc4_key, upper, client_addr):
         super().__init__(rc4_key, upper, client_addr)
         self.last_call_id = 0
+        self.last_seq = 1
 
     def handle_packet(self, packet):
         if super().handle_packet(packet): # Is this already handled?
@@ -74,11 +75,12 @@ class NEXClient(PRUDPClient):
                     packet_out.source = 0xa1
                     packet_out.dest = 0xaf
                     packet_out.op = PRUDPV0Packet.OP_DATA
-                    packet_out.flags = PRUDPV0Packet.FLAG_NEEDS_ACK
+                    packet_out.flags = PRUDPV0Packet.FLAG_NEEDS_ACK | PRUDPV0Packet.FLAG_RELIABLE | PRUDPV0Packet.FLAG_HAS_SIZE
                     packet_out.session = packet.session
-                    packet_out.seq = packet.seq + 1
+                    packet_out.seq = self.last_seq
+                    self.last_seq += 1
                     packet_out.fragment = 0
-                    packet_out.data_len = response_data_len
+                    packet_out.data_size = response_data_len + 4
                     packet_out.data = resp_header
                     if success:
                         packet_out.data += response
