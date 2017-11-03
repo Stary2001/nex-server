@@ -1,6 +1,8 @@
 import asyncio
 import struct
 
+from binascii import hexlify
+
 from prudp.server import PRUDPClient
 from prudp.v0packet import PRUDPV0Packet, PRUDPV0PacketOut
 from prudp.protocols import protocol_list
@@ -74,7 +76,7 @@ class NEXClient(PRUDPClient):
                     packet_out.op = PRUDPV0Packet.OP_DATA
                     packet_out.flags = PRUDPV0Packet.FLAG_NEEDS_ACK
                     packet_out.session = packet.session
-                    packet_out.seq = packet.seq
+                    packet_out.seq = packet.seq + 1
                     packet_out.fragment = 0
                     packet_out.data_len = repsonse_data_len
                     packet_out.data = resp_header
@@ -107,5 +109,5 @@ class NEXProtocol(asyncio.DatagramProtocol):
         packet = client.handle_data(data)
 
     def sendto(self, data, addr):
-        print(">>>", data)
+        print(">>>", hexlify(data))
         return self.transport.sendto(data, addr)

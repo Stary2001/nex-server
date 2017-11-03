@@ -100,7 +100,7 @@ class PRUDPV0Packet:
         if self.sig == None:
             self.sig = 0
 
-        if self.conn_sig == None:
+        if self.op == PRUDPV0Packet.OP_SYN or self.op == PRUDPV0Packet.OP_CONNECT and self.conn_sig == None:
             self.conn_sig = 0
 
         data = b""

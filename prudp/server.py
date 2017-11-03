@@ -44,7 +44,6 @@ class PRUDPClient:
                 packet_out.data_size = 0
 
                 p = packet_out.encode(self.rc4_state_encrypt)
-                print("Sending", packet_out)
                 self.send_packet(packet_out)
                 return True
             else:
@@ -83,10 +82,13 @@ class PRUDPClient:
                 packet_out.source = 0xa1
                 packet_out.dest = 0xaf
                 packet_out.op = PRUDPV0Packet.OP_DATA
-                packet_out.flags = PRUDPV0Packet.FLAG_ACK
+                packet_out.flags = PRUDPV0Packet.FLAG_ACK | PRUDPV0Packet.FLAG_HAS_SIZE
                 packet_out.session = packet.session
                 packet_out.seq = packet.seq
                 packet_out.fragment = 0
+                packet_out.sig = 0x12345678
+                packet_out.data_size = 0
+
                 self.send_packet(packet_out)
                 return False # Please handle this further.
         print("Unhandled packet??")
