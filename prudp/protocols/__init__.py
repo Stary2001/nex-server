@@ -17,7 +17,7 @@ def pack(typ, value):
 	elif typ == 'u8[*]':
 		return struct.pack("<I", len(value)) + value
 	elif typ == 'string':
-		return struct.pack("<H", len(value)) + value.encode('utf-8') + b'\x00'
+		return struct.pack("<H", len(value) + 1) + value.encode('utf-8') + b'\x00'
 
 def incoming(*args):
 	def decorator(f):
