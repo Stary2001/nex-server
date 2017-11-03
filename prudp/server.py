@@ -91,6 +91,21 @@ class PRUDPClient:
 
                 self.send_packet(packet_out)
                 return False # Please handle this further.
+            elif packet.op == PRUDPV0Packet.OP_HEARTBEAT:
+                # Ack it.
+                packet_out = PRUDPV0PacketOut()
+                packet_out.source = 0xa1
+                packet_out.dest = 0xaf
+                packet_out.op = PRUDPV0Packet.OP_HEARTBEAT
+                packet_out.flags = PRUDPV0Packet.FLAG_ACK | PRUDPV0Packet.FLAG_HAS_SIZE
+                packet_out.session = packet.session
+                packet_out.seq = packet.seq
+                packet_out.fragment = 0
+                packet_out.sig = 0x12345678
+                packet_out.data_size = 0
+                self.send_packet(packet_out)
+                return True
+
         print("Unhandled packet??")
         print(packet)
         return False

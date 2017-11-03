@@ -6,6 +6,7 @@ class PRUDPV0Packet:
     OP_CONNECT = 1
     OP_DATA = 2
     OP_DISCONNECT = 3
+    OP_HEARTBEAT = 4
 
     FLAG_ACK = 0x1
     FLAG_RELIABLE = 0x2
@@ -75,13 +76,14 @@ class PRUDPV0Packet:
             fragment = data[11]
 
         if flags & PRUDPV0Packet.FLAG_HAS_SIZE != 0:
-            data_size = struct.unpack("<H", data[header_size:header_size+2])
+            data_size = struct.unpack("<H", data[header_size:header_size+2])[0]
             header_size += 2
 
             packet_data = data[header_size:header_size+data_size]
-        elif op == PRUDPV0Packet.OP_DATA:
-            data_size = len(data) - header_size - 1
-            packet_data = data[header_size:header_size+data_size]
+        if op == PRUDPV0Packet.OP_DATA:
+            if data_size == None:
+                data_size = len(data) - header_size - 1
+                packet_data = data[header_size:header_size+data_size]
             packet_data = rc4_state.crypt(packet_data)
 
         return PRUDPV0Packet(source=source,

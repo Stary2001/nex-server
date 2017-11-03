@@ -54,11 +54,11 @@ class NEXClient(PRUDPClient):
                         success, result, response = proto.methods[method](arg_data)
 
                     if success:
-                        repsonse_data_len = len(response) + 10
+                        response_data_len = len(response) + 10
                     else:
-                        repsonse_data_len = 10
+                        response_data_len = 10
 
-                    resp_header = struct.pack("<I", repsonse_data_len)
+                    resp_header = struct.pack("<I", response_data_len)
                     resp_header += struct.pack("B", proto_with_flag & ~0x80)
                     resp_header += struct.pack("B", success)
                     if success:
@@ -78,7 +78,7 @@ class NEXClient(PRUDPClient):
                     packet_out.session = packet.session
                     packet_out.seq = packet.seq + 1
                     packet_out.fragment = 0
-                    packet_out.data_len = repsonse_data_len
+                    packet_out.data_len = response_data_len
                     packet_out.data = resp_header
                     if success:
                         packet_out.data += response
