@@ -132,7 +132,7 @@ class PRUDPV0Packet:
             data += struct.pack("<H", self.data_size)
 
         if self.data:
-            data += rc4_state.crypt(self.data)
+            data += enc_data
 
         data += struct.pack("B", PRUDPV0Packet.calc_checksum(sum("ridfebb9".encode("ascii")), data))
         return data
