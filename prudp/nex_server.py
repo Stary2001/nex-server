@@ -34,7 +34,8 @@ class NEXClient(PRUDPClient):
 
                 data_len = struct.unpack("<I", packet.data[0:4])[0]
                 proto_with_flag = packet.data[4]
-                proto = protocol_list[proto_with_flag & ~0x80]
+                proto_id = proto_with_flag & ~0x80
+                proto = protocol_list[proto_id]
 
                 if proto_with_flag & 0x80:
                     # Request.
@@ -44,11 +45,11 @@ class NEXClient(PRUDPClient):
                     
                     print("Call: {:08x}, method: {:08x}".format(call_id, method))
                     if not proto:
-                        print("Unknown protocol number {:02x}".format(proto_with_flag))
+                        print("Unknown protocol number {:02x}".format(proto_id))
                         success = False
                         result = 0x80010002 # Core::Unknown
                     elif not method in proto.methods:
-                        print("Unknown method {:08x} on protocol {:02x}!")
+                        print("Unknown method {:08x} on protocol {:02x}!".format(method, proto_id))
                         success = False
                         result = 0x80010002 # Core::Unknown
                     else:
