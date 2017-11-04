@@ -26,7 +26,7 @@ class NEXClient(PRUDPClient):
         result = 0
 
         if self.state == PRUDPClient.STATE_CONNECTED:
-            if packet.op == PRUDPV0Packet.OP_DATA:
+            if packet.op == PRUDPV0Packet.OP_DATA and packet.flags & PRUDPV0Packet.FLAG_ACK == 0:
                 global protocol_list
 
                 response = None

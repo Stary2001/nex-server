@@ -74,7 +74,7 @@ class PRUDPClient:
         elif self.state == PRUDPClient.STATE_CONNECTED:
             print("Connected:")
             print(packet)
-            if packet.op == PRUDPV0Packet.OP_DATA:
+            if packet.op == PRUDPV0Packet.OP_DATA and packet.flags & PRUDPV0Packet.FLAG_ACK == 0:
                 # Ack it.
                 # TODO: Fragment reassembly here, if required.
 
@@ -86,7 +86,6 @@ class PRUDPClient:
                 packet_out.session = packet.session
                 packet_out.seq = packet.seq
                 packet_out.fragment = 0
-                packet_out.sig = 0x12345678
                 packet_out.data_size = 0
 
                 self.send_packet(packet_out)
@@ -101,7 +100,6 @@ class PRUDPClient:
                 packet_out.session = packet.session
                 packet_out.seq = packet.seq
                 packet_out.fragment = 0
-                packet_out.sig = 0x12345678
                 packet_out.data_size = 0
                 self.send_packet(packet_out)
                 return True
