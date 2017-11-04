@@ -82,7 +82,7 @@ class PRUDPV0Packet:
             header_size += 2
 
             packet_data = data[header_size:header_size+data_size]
-        if op == PRUDPV0Packet.OP_DATA:
+        if op == PRUDPV0Packet.OP_DATA and flags & PRUDPV0Packet.FLAG_ACK == 0:
             if data_size == None:
                 data_size = len(data) - header_size - 1
                 packet_data = data[header_size:header_size+data_size]

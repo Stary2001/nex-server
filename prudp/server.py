@@ -11,8 +11,8 @@ class PRUDPClient:
     STATE_CONNECTED = 2
 
     def __init__(self, rc4_key, upper, client_addr):
-        self.rc4_state_encrypt = RC4(rc4_key)
-        self.rc4_state_decrypt = RC4(rc4_key)
+        self.rc4_state_encrypt = RC4(rc4_key, reset=False)
+        self.rc4_state_decrypt = RC4(rc4_key, reset=False)
 
         self.cur_seq = 0
         self.state = PRUDPClient.STATE_EXPECT_SYN
