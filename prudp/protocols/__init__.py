@@ -6,6 +6,8 @@ def unpack(typ, data):
 		string_size = struct.unpack("<H", data[0:2])[0]
 		s = data[2:string_size+2].decode('utf-8')
 		return s, string_size+3 # +3 lets us skip the null byte at the end..
+	elif typ == 'u32':
+		return struct.unpack("<I", data[0:4])[0], 4
 
 def pack(typ, value):
 	if typ == 'u16':
@@ -38,8 +40,8 @@ def incoming(*args):
 def outgoing(*args):
 	def decorator(f):
 		@functools.wraps(f)
-		def func(self, data):
-			res = f(self, data)
+		def func(self, *argz):
+			res = f(self, *argz)
 			if len(res) != 3:
 				print("Outgoing arg packing: function returned a tuple of length other than 3.")
 				return (False, 0x80010005, None) # "Core::Exception",
