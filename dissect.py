@@ -1,16 +1,39 @@
 from prudp import PRUDPV0Packet
 from rc4 import RC4
 from binascii import hexlify, unhexlify
+from pcapfile import savefile
+import sys
 
-rc4_state_rx = RC4(b'CD&ML')
-p1 = unhexlify(b'afa16200bec7b70216020000198744db99f92c5005a361fd2a1df280c763d3c0a061942e69ef7e')
-p1 = PRUDPV0Packet.decode(p1, rc4_state_rx)
-print(p1)
+f = open(sys.argv[1], 'rb')
+pcapfile = savefile.load_savefile(f, verbose=True, layers=3)
 
-rc4_state_tx = RC4(b'CD&ML')
-p2 = unhexlify(b'a1afe200489a16dcaf0100001f01148644db19fe2a5005a2607d2a16f3b1fe56f12b0e38ce1c5aef4152c4a1f06bdbe710819d3c709efb87439c5d665cd8f425fb513340a6189f848af22b785ee5622d63e163c16db8ec8d7660c79cb568fdcaacceb4c23c8b1d07ae28d094e273fa47f8cb6034ebd2f396f516d3d73a805dd2371e9c77cafd286f9df50a57b13b4db4de918ae8f0bda55720b9dc5873e5e9b13c391dd023019ab5a6a0a138851553834ba078504763aa583b2d149987b74d4ea7dd092f7ade40ecf0c21b378cd1086e8e45239fbe422f8fe857f91d41e3cba2635125f69a0b3eccaa7d5cf3e855c8f5b6356a52d12db6ad929a0554f1a743b68149e4124444a4912ba4c5d1cc9e70fea1d23951aabc89293dd38f523dc4381f235a917e40a4fe115dddda3a36d9')
-p2 = PRUDPV0Packet.decode(p2, rc4_state_tx)
-print(hexlify(p2.data).decode('ascii'))
+src_addr = None
+dst_addr = None
 
-dat_a = '1b0100000a0198000000018000000100010017de996e6c000000f4554e7bb065ad9bd5854ea76b3b6f68e8796133c77ff6916a4588893ad98d336869b501b2d82995bcbacd9cc972897a8b498d98f7a11e7862685218942da70a0e06704a2aad8652aed1904c7a2d90c0cc1dc78c0429976fc35d118644cd3923a30ac6e5aebb252634e83fb34b007072756470733a2f616464726573733d33342e3231312e3138372e39393b706f72743d36303138313b4349443d313b5049443d323b7369643d313b73747265616d3d31303b747970653d32000000000001000041006272616e63683a6f726967696e2f666561747572652f34353932355f4669784175746f5265636f6e6e656374206275696c643a335f31305f31315f323030365f3000'
-print(dat_a)
+rc4_c = RC4(b'CD&ML', reset=False)
+rc4_s = RC4(b'CD&ML', reset=False)
+
+for p in pcapfile.packets:
+	data = unhexlify(p.packet.payload.payload.payload)
+
+	if data[0:2] == b'\xaf\xa1':
+		print(">>> ", end="")
+		p = PRUDPV0Packet.decode(data, rc4_c)
+	elif data[0:2] == b'\xa1\xaf':
+		print("<<< ", end="")
+		p = PRUDPV0Packet.decode(data, rc4_s)
+	#print(p)
+
+	if p.op == PRUDPV0Packet.OP_SYN:
+		print("SYN seq {}{}".format(p.seq, " (ack)" if p.flags & PRUDPV0Packet.FLAG_ACK else ""))
+	elif p.op == PRUDPV0Packet.OP_CONNECT:
+		print("CONNECT seq {}{}".format(p.seq, " (ack)" if p.flags & PRUDPV0Packet.FLAG_ACK else ""))
+	if p.op == PRUDPV0Packet.OP_DATA:
+		if p.flags & PRUDPV0Packet.FLAG_ACK:
+			print("Data ack for seq {}".format(p.seq))
+		else:
+			print("Data packet seq {}: {}".format(p.seq, hexlify(p.data).decode('ascii')))
+	elif p.op == PRUDPV0Packet.OP_HEARTBEAT:
+		print("Heartbeat seq {}".format(p.seq))
+	elif p.op == PRUDPV0Packet.OP_DISCONNECT:
+		print("Disconnect request seq {}".format(p.seq))
