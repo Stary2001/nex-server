@@ -107,11 +107,14 @@ class PRUDPV0Packet:
 
         sig = None
         if self.sig == None:
-            if self.data_size == 0 or self.data == b'':
-                self.sig = b'\x78\x56\x34\x12'
+            if self.op == PRUDPV0Packet.OP_DATA:
+                if self.data_size == 0 or self.data == b'':
+                    self.sig = b'\x78\x56\x34\x12'
+                else:
+                    key = hashlib.md5(b"ridfebb9").digest()
+                    self.sig = hmac.HMAC(key, enc_data).digest()[:4]
             else:
-                key = hashlib.md5(b"ridfebb9").digest()
-                self.sig = hmac.HMAC(key, enc_data).digest()[:4]
+                self.sig = b'\x00\x00\x00\x00'
 
         if self.op == PRUDPV0Packet.OP_SYN or self.op == PRUDPV0Packet.OP_CONNECT and self.conn_sig == None:
             self.conn_sig = b'\x00\x00\x00\x00'
