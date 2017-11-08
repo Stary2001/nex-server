@@ -10,7 +10,9 @@ def unpack(typ, data):
 		return struct.unpack("<I", data[0:4])[0], 4
 
 def pack(typ, value):
-	if typ == 'u16':
+	if typ == 'u8':
+		return struct.pack("<B", value)
+	elif typ == 'u16':
 		return struct.pack("<H", value)
 	elif typ == 'u32':
 		return struct.pack("<I", value)
@@ -20,6 +22,13 @@ def pack(typ, value):
 		return struct.pack("<I", len(value)) + value
 	elif typ == 'string':
 		return struct.pack("<H", len(value) + 1) + value.encode('utf-8') + b'\x00'
+	elif typ[0:4] == 'list': # list<type>
+		data = struct.pack("<I", len(value))
+		item_type = typ[5:-1]
+		for item in value:
+			data += pack(item)
+
+		return data
 
 def incoming(*args):
 	def decorator(f):
