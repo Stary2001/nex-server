@@ -53,7 +53,12 @@ class NEXClient(PRUDPClient):
                         success = False
                         result = 0x80010002 # Core::Unknown
                     else:
-                        success, result, response = proto.methods[method](arg_data)
+                        try:
+                            success, result, response = proto.methods[method](arg_data)
+                        except:
+                            success = False
+                            result = 0x80010005 # Core::Exception
+                            response = b''
 
                     if success:
                         response_data_len = len(response) + 10

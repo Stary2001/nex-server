@@ -4,7 +4,9 @@ import struct
 def unpack(typ, data):
 	if typ == 'string':
 		string_size = struct.unpack("<H", data[0:2])[0]
-		s = data[2:string_size+2].decode('utf-8')
+		print(data[2:string_size+2])
+		s = data[2:string_size+2 - 1].decode('utf-8') # remove the null byte from the final string!
+		print(s)
 		return s, string_size+3 # +3 lets us skip the null byte at the end..
 	elif typ == 'u32':
 		return struct.unpack("<I", data[0:4])[0], 4
