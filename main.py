@@ -10,6 +10,3 @@ try:
     loop.run_forever()
 except KeyboardInterrupt:
     pass
-
-transport.close()
-loop.close()
