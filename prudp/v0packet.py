@@ -47,7 +47,7 @@ class PRUDPV0Packet:
         words = struct.unpack_from("<"+"I"*(len(data)//4),data)
         temp = sum(words) & 0xffffffff
 
-        checksum += sum(data[-(len(data) & 3):])
+        checksum += sum(data[len(data) - (len(data) & 3):])
         checksum += sum(struct.pack("I", temp))
 
         return checksum & 0xff
