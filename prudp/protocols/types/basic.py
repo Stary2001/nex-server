@@ -44,19 +44,22 @@ class StringType(Type):
 		return struct.pack("<H",len(to_pack) + 1) + to_pack.encode('utf-8') + b'\x00'
 
 	def unpack(self, to_unpack):
+		print("k", to_unpack)
 		string_size = struct.unpack("<H", to_unpack[0:2])[0]
 		s = to_unpack[2:string_size+2 - 1].decode('utf-8') # remove the null byte from the final string!
-		return s, string_size+3 # +3 lets us skip the null byte at the end..
+		print(s)
+		return s, string_size+2
 
 class VariableBytesType(Type):
 	def __init__(self):
 		super().__init__("u8[*]")
-	
+
 	def pack(self, to_pack):
 		return struct.pack("<I", len(to_pack)) + to_pack
-	
+
 	def unpack(self, to_unpack):
-		raise NotImplementedError("No")
+		data_len = struct.unpack("<I", to_unpack[0:4])[0]
+		return to_unpack[4:data_len+4], data_len + 4
 
 class ListType(Type):
 	def __init__(self, containing_type):

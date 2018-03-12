@@ -15,7 +15,8 @@ class PRUDPV0Packet:
     FLAG_NEEDS_ACK = 0x4
     FLAG_HAS_SIZE = 0x8
 
-    def __init__(self, source=None, dest=None, op=None, flags=None, session=None, sig=None, seq=None, conn_sig=None, fragment=None, data_size=None, data=None):
+    def __init__(self, upper=None, source=None, dest=None, op=None, flags=None, session=None, sig=None, seq=None, conn_sig=None, fragment=None, data_size=None, data=None):
+        self.upper = upper
         self.source = source
         self.dest = dest
         self.op = op
@@ -83,11 +84,12 @@ class PRUDPV0Packet:
 
             packet_data = data[header_size:header_size+data_size]
 
-        if op == PRUDPV0Packet.OP_DATA and flags & PRUDPV0Packet.FLAG_ACK == 0:
+        if (op == PRUDPV0Packet.OP_DATA or op == PRUDPV0Packet.OP_CONNECT) and flags & PRUDPV0Packet.FLAG_ACK == 0:
             if data_size == None:
                 data_size = len(data) - header_size - 1
                 packet_data = data[header_size:header_size+data_size]
-            packet_data = rc4_state.crypt(packet_data)
+            if op == PRUDPV0Packet.OP_DATA:
+                packet_data = rc4_state.crypt(packet_data)
 
         return PRUDPV0Packet(source=source,
                              dest=dest,
@@ -104,18 +106,23 @@ class PRUDPV0Packet:
     def encode(self, rc4_state):
         enc_data = None
         if self.data:
-            enc_data = rc4_state.crypt(self.data)
+            if self.op == PRUDPV0Packet.OP_DATA: # CONNECTs have unencrypted data!
+                enc_data = rc4_state.crypt(self.data)
+            else:
+                enc_data = self.data
 
         sig = None
         if self.sig == None:
-            if self.op == PRUDPV0Packet.OP_DATA:
+            if self.op == PRUDPV0Packet.OP_DATA or (self.op == PRUDPV0Packet.OP_CONNECT and self.data != None):
                 if self.data_size == 0 or self.data == b'':
                     self.sig = b'\x78\x56\x34\x12'
                 else:
                     key = hashlib.md5(b"ridfebb9").digest()
                     self.sig = hmac.HMAC(key, enc_data).digest()[:4]
-            else:
+            elif self.op == PRUDPV0Packet.OP_SYN:
                 self.sig = b'\x00\x00\x00\x00'
+            else:
+                self.sig = self.upper.client_signature
 
         if self.op == PRUDPV0Packet.OP_SYN or self.op == PRUDPV0Packet.OP_CONNECT and self.conn_sig == None:
             self.conn_sig = b'\x00\x00\x00\x00'
