@@ -2,7 +2,7 @@ import struct
 from rc4 import RC4
 import hashlib
 import hmac
-from .. import Type
+from .basic import Type
 
 class KerberosContainer():
 	def __init__(self, user_pid=None, user_password=None, key=None):

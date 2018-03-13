@@ -66,6 +66,8 @@ class NEXClient(PRUDPClient):
                             response = b''
 
                     if success:
+                        if response == None:
+                            response = b''
                         response_data_len = len(response) + 10
                     else:
                         response_data_len = 10
