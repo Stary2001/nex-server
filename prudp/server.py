@@ -33,7 +33,7 @@ class PRUDPClient:
         return PRUDPV0Packet.decode(data, self.rc4_state_decrypt)
 
     def handle_data(self, data):
-        print("<<<", data)
+        #print("<<<", data)
         return self.handle_packet(self.decode_packet(data))
 
     def handle_packet(self, packet):
@@ -150,5 +150,5 @@ class PRUDPClient:
 
     def send_packet(self, packet):
         p = packet.encode(self.rc4_state_encrypt)
-        print("Sending ", packet)
+        #print("Sending ", packet)
         self.upper.sendto(p, self.client_addr)

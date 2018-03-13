@@ -82,10 +82,13 @@ class ListType(Type):
 			curr += item_len
 		return items, curr
 
-BasicU8 = StructType('u8', fmt="B")
-BasicU16 = StructType('u16', fmt="H")
-BasicU32 = StructType('u32', fmt="I")
+BasicU8 = StructType('u8', fmt='B')
+BasicU16 = StructType('u16', fmt='H')
+BasicU32 = StructType('u32', fmt='I')
+BasicU64 = StructType('u64', fmt='Q')
 String = StringType()
 VarBytes = VariableBytesType()
 ListU8 = ListType(BasicU8)
+ListU32 = ListType(BasicU32)
+ListU64 = ListType(BasicU64)
 ListString = ListType(String)

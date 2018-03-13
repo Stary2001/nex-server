@@ -121,7 +121,6 @@ class NEXAuthProtocol(asyncio.DatagramProtocol):
         packet = client.handle_data(data)
 
     def sendto(self, data, addr):
-        print(">>>", hexlify(data))
         return self.transport.sendto(data, addr)
 
 class NEXSecureProtocol(asyncio.DatagramProtocol):
@@ -143,5 +142,4 @@ class NEXSecureProtocol(asyncio.DatagramProtocol):
         packet = client.handle_data(data)
 
     def sendto(self, data, addr):
-        print(">>>", hexlify(data))
         return self.transport.sendto(data, addr)

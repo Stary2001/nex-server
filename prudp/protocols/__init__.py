@@ -20,7 +20,6 @@ def incoming(*args):
 	def decorator(f):
 		@functools.wraps(f)
 		def func(self, data):
-			print(data)
 			loc = 0
 			real_args = []
 
@@ -53,8 +52,10 @@ def outgoing(*args):
 
 from prudp.protocols.authentication import AuthenticationProtocol
 from prudp.protocols.secure_connection import SecureConnectionProtocol
+from prudp.protocols.friends_3ds import Friends3DSProtocol
 
 global protocol_list
 protocol_list = {}
 protocol_list[0x0a] = AuthenticationProtocol()
 protocol_list[0x0b] = SecureConnectionProtocol()
+protocol_list[0x65] = Friends3DSProtocol()

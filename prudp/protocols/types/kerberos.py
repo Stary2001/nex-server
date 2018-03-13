@@ -18,17 +18,11 @@ class KerberosContainer():
 			self.key = key
 
 	def unpack(self, data):
-		print(len(data), data)
-		#contents = Type.get_type('u8[*]').unpack(data)
-
 		ticket = data[:-0x10]
 		mac = data[-0x10:]
-		print(ticket, mac)
 
 		ticket_mac = hmac.HMAC(self.key)
 		ticket_mac.update(ticket)
-		print(self.key)
-		print(mac, ticket_mac.digest())
 		if ticket_mac.digest() != mac:
 			raise ValueError("Kerberos MAC is invalid!")
 
