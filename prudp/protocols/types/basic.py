@@ -57,10 +57,8 @@ class StringType(Type):
 		return struct.pack("<H",len(to_pack) + 1) + to_pack.encode('utf-8') + b'\x00'
 
 	def unpack(self, to_unpack):
-		print("k", to_unpack)
 		string_size = struct.unpack("<H", to_unpack[0:2])[0]
 		s = to_unpack[2:string_size+2 - 1].decode('utf-8') # remove the null byte from the final string!
-		print(s)
 		return s, string_size+2
 
 class BufferType(Type):

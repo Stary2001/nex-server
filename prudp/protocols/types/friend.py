@@ -113,8 +113,6 @@ class NintendoPresenceType(Type):
 		raise NotImplementedError("NintendoPresence packing is unimplemented!")
 
 	def unpack(self, to_unpack):
-		print("NintendoPresence", len(to_unpack))
-
 		unk_u32_1, _ = BasicU32.unpack(to_unpack)
 		game_key, game_key_len = GameKey_Instance.unpack(to_unpack[4:])
 		message, message_len = String.unpack(to_unpack[4+game_key_len:])
@@ -125,7 +123,7 @@ class NintendoPresenceType(Type):
 		unk_u32_5, _ = BasicU32.unpack(to_unpack[game_key_len+message_len+17:])
 		unk_u32_6, _ = BasicU32.unpack(to_unpack[game_key_len+message_len+21:])
 		unk_buffer, buffer_len = Buffer.unpack(to_unpack[game_key_len+message_len+25:])
-		print(unk_buffer, buffer_len)
+
 		return NintendoPresence(
 			unk_u32_1,
 			game_key,
@@ -257,7 +255,7 @@ GameKey_Instance = GameKeyType()
 NintendoPresence_Instance = NintendoPresenceType()
 FriendPresence_Instance = FriendPresenceType()
 ListFriendPresence = ListType(FriendPresence_Instance)
-
+f
 MyProfile_Instance = MyProfileType()
 
 FriendPersistentInfo_Instance = FriendPersistentInfoType()

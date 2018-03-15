@@ -21,7 +21,6 @@ class SecureConnectionProtocol:
 	@incoming("list<string>", "string", "u32", "u8[*]")
 	@outgoing("u32", "u32", "string")
 	def register_ex(self, client_urls, dataholder_name, d_len, buff):
-		print(dataholder_name, d_len, buff)
 		success = True
 		result = 0x00010001
 		pid_conn_id = 0
