@@ -255,7 +255,7 @@ GameKey_Instance = GameKeyType()
 NintendoPresence_Instance = NintendoPresenceType()
 FriendPresence_Instance = FriendPresenceType()
 ListFriendPresence = ListType(FriendPresence_Instance)
-f
+
 MyProfile_Instance = MyProfileType()
 
 FriendPersistentInfo_Instance = FriendPersistentInfoType()
