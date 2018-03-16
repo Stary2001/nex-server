@@ -15,7 +15,7 @@ class PRUDPV0Packet:
     FLAG_NEEDS_ACK = 0x4
     FLAG_HAS_SIZE = 0x8
 
-    def __init__(self, upper=None, source=None, dest=None, op=None, flags=None, session=None, sig=None, seq=None, conn_sig=None, fragment=None, data_size=None, data=None):
+    def __init__(self, upper=None, source=None, dest=None, op=None, flags=None, session=None, sig=None, seq=None, conn_sig=None, fragment=None, data_size=None, data=None, access_key=None):
         self.upper = upper
         self.source = source
         self.dest = dest
@@ -28,6 +28,7 @@ class PRUDPV0Packet:
         self.fragment = fragment
         self.data_size = data_size
         self.data = data
+        self.access_key = access_key
 
     def __repr__(self):
         s = "source={:02x}, dest={:02x}, op={}, flags={:04x}, session={:02x}, sig={:08x}, seq={:02x}".format(self.source, self.dest, self.op, self.flags, self.session, struct.unpack("<I", self.sig)[0], self.seq)
@@ -117,7 +118,7 @@ class PRUDPV0Packet:
                 if self.data_size == 0 or self.data == b'':
                     self.sig = b'\x78\x56\x34\x12'
                 else:
-                    key = hashlib.md5(b"ridfebb9").digest()
+                    key = hashlib.md5(self.access_key).digest()
                     self.sig = hmac.HMAC(key, enc_data).digest()[:4]
             elif self.op == PRUDPV0Packet.OP_SYN:
                 self.sig = b'\x00\x00\x00\x00'
@@ -145,7 +146,7 @@ class PRUDPV0Packet:
         if self.data:
             data += enc_data
 
-        data += struct.pack("B", PRUDPV0Packet.calc_checksum(sum("ridfebb9".encode("ascii")), data))
+        data += struct.pack("B", PRUDPV0Packet.calc_checksum(sum(self.access_key), data))
         return data
 
 class PRUDPV0PacketOut(PRUDPV0Packet):

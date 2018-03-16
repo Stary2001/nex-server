@@ -15,8 +15,8 @@ class NEXClient(PRUDPClient):
     STATE_EXPECT_CONNECT = 1
     STATE_CONNECTED = 2
 
-    def __init__(self, rc4_key, upper, client_addr):
-        super().__init__(rc4_key, upper, client_addr)
+    def __init__(self, access_key, rc4_key, upper, client_addr):
+        super().__init__(access_key, rc4_key, upper, client_addr)
         self.last_call_id = 0
         self.last_seq = 1
 
@@ -37,7 +37,9 @@ class NEXClient(PRUDPClient):
                 data_len = struct.unpack("<I", packet.data[0:4])[0]
                 proto_with_flag = packet.data[4]
                 proto_id = proto_with_flag & ~0x80
-                proto = protocol_list[proto_id]
+                proto = None
+                if proto_id in protocol_list:
+                    proto = protocol_list[proto_id]
 
                 if proto_with_flag & 0x80:
                     # Request.
@@ -47,11 +49,11 @@ class NEXClient(PRUDPClient):
                     
                     print("Call: {:08x}, method: {:08x}".format(call_id, method))
                     if not proto:
-                        print("Unknown protocol number {:02x}".format(proto_id))
+                        print("Unknown protocol number {:02x} (call {:x})".format(proto_id, call_id))
                         success = False
                         result = 0x80010002 # Core::Unknown
                     elif not method in proto.methods:
-                        print("Unknown method {:08x} on protocol {:02x}!".format(method, proto_id))
+                        print("Unknown method {:08x} on protocol {:02x} call {:x}!".format(method, proto_id, call_id))
                         success = False
                         result = 0x80010002 # Core::Unknown
                     else:
@@ -83,7 +85,7 @@ class NEXClient(PRUDPClient):
                         resp_header += struct.pack("<I", call_id)
 
                     # Send a response.
-                    packet_out = PRUDPV0PacketOut()
+                    packet_out = PRUDPV0PacketOut(access_key = self.access_key)
                     packet_out.source = 0xa1
                     packet_out.dest = 0xaf
                     packet_out.op = PRUDPV0Packet.OP_DATA
@@ -106,8 +108,9 @@ class NEXClient(PRUDPClient):
 # Time out connections after <some time> of lingering in STATE_EXPECT_SYN.
 
 class NEXAuthProtocol(asyncio.DatagramProtocol):
-    def __init__(self):
+    def __init__(self, access_key, secure_port):
         super().__init__()
+        self.access_key = access_key
         self.connections = {}
 
     def connection_made(self, transport):
@@ -115,7 +118,7 @@ class NEXAuthProtocol(asyncio.DatagramProtocol):
 
     def datagram_received(self, data, addr):
         if not addr in self.connections:
-            client = NEXClient(b"CD&ML", self, addr)
+            client = NEXClient(self.access_key, b"CD&ML", self, addr)
             self.connections[addr] = client
         else:
             client = self.connections[addr]
@@ -126,9 +129,10 @@ class NEXAuthProtocol(asyncio.DatagramProtocol):
         return self.transport.sendto(data, addr)
 
 class NEXSecureProtocol(asyncio.DatagramProtocol):
-    def __init__(self, secure_key=None):
+    def __init__(self, access_key=None, secure_key=None):
         super().__init__()
         self.connections = {}
+        self.access_key = access_key
         self.secure_key = secure_key
 
     def connection_made(self, transport):
@@ -136,7 +140,7 @@ class NEXSecureProtocol(asyncio.DatagramProtocol):
 
     def datagram_received(self, data, addr):
         if not addr in self.connections:
-            client = NEXClient(self.secure_key, self, addr)
+            client = NEXClient(self.access_key, self.secure_key, self, addr)
             self.connections[addr] = client
         else:
             client = self.connections[addr]
