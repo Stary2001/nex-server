@@ -9,6 +9,7 @@ class AuthenticationProtocol:
 	def __init__(self):
 		self.methods = {}
 		self.methods[1] = self.login
+		self.methods[2] = self.login_ex
 		self.methods[3] = self.request_token
 
 	def build_ticket(self, user_pid=None, user_password=None, ticket_data=None, secure_key=None, step = 1):
@@ -40,6 +41,23 @@ class AuthenticationProtocol:
 		success = True
 		result = 0x00010001
 		secure_station_url = 'prudps:/address=192.168.254.1;port=60901;CID=1;PID=2;sid=1;stream=10;type=2'
+		build = 'branch:origin/feature/45925_FixAutoReconnect build:3_10_11_2006_0'
+
+		return (success, result, (result, user_pid_int, ticket, secure_station_url, [], '', build))
+
+	@incoming('string', 'string', 'u32', 'Buffer')
+	@outgoing('u32', 'u32', 'u8[*]', 'string', 'list<u8>', 'string', 'string')
+	def login_ex(self, user_pid, *a):
+		user_pid_int = int(user_pid)
+		password = "|+GF-i):/7Z87_:q"
+
+		secure_key = b'\x00' * 32
+		ticket_data = unhexlify('10000000dd732c4009de947224a4ae42adf9b1ca2c0000007049bd8fc0ebb192b25d7331a947b9fee49630d7139c6f975db245fb0c60aeabeb287fb5f89a6f51a02dade5')
+		ticket = self.build_ticket(user_pid=user_pid_int, user_password=password, ticket_data=ticket_data, secure_key=secure_key)
+
+		success = True
+		result = 0x00010001
+		secure_station_url = 'prudps:/address=192.168.254.1;port=60801;CID=1;PID=2;sid=1;stream=10;type=2'
 		build = 'branch:origin/feature/45925_FixAutoReconnect build:3_10_11_2006_0'
 
 		return (success, result, (result, user_pid_int, ticket, secure_station_url, [], '', build))
