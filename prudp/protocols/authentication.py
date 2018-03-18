@@ -52,13 +52,13 @@ class AuthenticationProtocol:
 		password = "|+GF-i):/7Z87_:q"
 
 		secure_key = b'\x00' * 32
-		ticket_data = unhexlify('10000000dd732c4009de947224a4ae42adf9b1ca2c0000007049bd8fc0ebb192b25d7331a947b9fee49630d7139c6f975db245fb0c60aeabeb287fb5f89a6f51a02dade5')
+		ticket_data = unhexlify('06a5b76200e4046d8f1e52429b413ae34f1b0d7ad795b63ce4885f9e68e3b66fdee8d6d31e200b3141a743cf4c0be89b853138f0384e2ec5c56ac9d0')
 		ticket = self.build_ticket(user_pid=user_pid_int, user_password=password, ticket_data=ticket_data, secure_key=secure_key)
 
 		success = True
 		result = 0x00010001
 		secure_station_url = 'prudps:/address=192.168.254.1;port=60801;CID=1;PID=2;sid=1;stream=10;type=2'
-		build = 'branch:origin/feature/45925_FixAutoReconnect build:3_10_11_2006_0'
+		build = 'branch:amk_server_branch build:2_17_11578_0'
 
 		return (success, result, (result, user_pid_int, ticket, secure_station_url, [], '', build))
 
