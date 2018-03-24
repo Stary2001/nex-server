@@ -1,6 +1,6 @@
 import asyncio
 import struct
-
+import hashlib
 from binascii import hexlify
 
 from prudp.server import PRUDPClient
@@ -15,8 +15,8 @@ class NEXClient(PRUDPClient):
     STATE_EXPECT_CONNECT = 1
     STATE_CONNECTED = 2
 
-    def __init__(self, access_key, sig_version, rc4_key, upper, client_addr):
-        super().__init__(access_key, sig_version, rc4_key, upper, client_addr)
+    def __init__(self, rc4_key, upper, client_addr):
+        super().__init__(rc4_key, upper, client_addr)
         if rc4_key != b'CD&ML':
             self.secure_key = rc4_key
         else:
@@ -24,6 +24,7 @@ class NEXClient(PRUDPClient):
 
         self.last_call_id = 0
         self.last_seq = 1
+        self.cached_protos = {}
 
     def handle_packet(self, packet):
         if super().handle_packet(packet): # Is this already handled?
@@ -44,7 +45,11 @@ class NEXClient(PRUDPClient):
                 proto_id = proto_with_flag & ~0x80
                 proto = None
                 if proto_id in protocol_list:
-                    proto = protocol_list[proto_id]
+                    if proto_id in self.cached_protos:
+                        proto = self.cached_protos[proto_id]
+                    else:
+                        proto = protocol_list[proto_id](self.server)
+                        self.cached_protos[proto_id] = proto
 
                 if proto_with_flag & 0x80:
                     # Request.
@@ -90,7 +95,7 @@ class NEXClient(PRUDPClient):
                         resp_header += struct.pack("<I", call_id)
 
                     # Send a response.
-                    packet_out = PRUDPV0PacketOut(upper=self, access_key = self.access_key, sig_version = self.sig_version)
+                    packet_out = PRUDPV0PacketOut(client=self)
                     packet_out.source = 0xa1
                     packet_out.dest = 0xaf
                     packet_out.op = PRUDPV0Packet.OP_DATA
@@ -109,46 +114,58 @@ class NEXClient(PRUDPClient):
                     pass
                     # Response?
 
-# TODO: big issue with this is stray UDP packets.
-# Time out connections after <some time> of lingering in STATE_EXPECT_SYN.
-
-class NEXAuthProtocol(asyncio.DatagramProtocol):
-    def __init__(self, access_key, secure_port, sig_version):
+class NEXServerBase(asyncio.DatagramProtocol):
+    def __init__(self, access_key, sig_version, secure_port=None, secure_key=None, secure_key_length=None):
         super().__init__()
         self.access_key = access_key
+        self.secure_key = secure_key
         self.secure_port = secure_port
+        if self.secure_key:
+            self.secure_key_length = len(self.secure_key)
+        else:
+            self.secure_key_length = secure_key_length
+
         self.sig_version = sig_version
         self.connections = {}
+        self.events = []
+
+        self.data_sig_key = hashlib.md5(self.access_key).digest()
+        self.checksum_base = sum(self.access_key)
 
     def connection_made(self, transport):
         self.transport = transport
 
+    def sendto(self, data, addr):
+        return self.transport.sendto(data, addr)
+
+# TODO: big issue with this is stray UDP packets.
+# Time out connections after <some time> of lingering in STATE_EXPECT_SYN.
+
+class NEXAuthServer(NEXServerBase):
+    def __init__(self, access_key, secure_port, secure_key_length, sig_version):
+        super().__init__(access_key=access_key, secure_port=secure_port, secure_key_length=secure_key_length, sig_version=sig_version)
+
     def datagram_received(self, data, addr):
         if not addr in self.connections:
-            client = NEXClient(self.access_key, self.sig_version, b"CD&ML", self, addr)
+            client = NEXClient(b"CD&ML", self, addr)
             self.connections[addr] = client
         else:
             client = self.connections[addr]
 
         packet = client.handle_data(data)
+        if packet:
+            print("paket????", packet)
 
-    def sendto(self, data, addr):
-        return self.transport.sendto(data, addr)
-
-class NEXSecureProtocol(asyncio.DatagramProtocol):
+class NEXSecureServer(NEXServerBase):
     def __init__(self, access_key=None, secure_key=None, sig_version=None):
-        super().__init__()
-        self.connections = {}
-        self.access_key = access_key
-        self.secure_key = secure_key
-        self.sig_version = sig_version
+        super().__init__(access_key=access_key, secure_key=secure_key, sig_version=sig_version)
 
     def connection_made(self, transport):
         self.transport = transport
 
     def datagram_received(self, data, addr):
         if not addr in self.connections:
-            client = NEXClient(self.access_key, self.sig_version, self.secure_key, self, addr)
+            client = NEXClient(self.secure_key, self, addr)
             self.connections[addr] = client
         else:
             client = self.connections[addr]

@@ -14,9 +14,7 @@ class PRUDPClient:
     STATE_EXPECT_CONNECT = 1
     STATE_CONNECTED = 2
 
-    def __init__(self, access_key, sig_version, rc4_key, upper, client_addr):
-        self.access_key = access_key
-        self.sig_version = sig_version
+    def __init__(self, rc4_key, server, client_addr):
         self.key = rc4_key
         self.rc4_state_encrypt = RC4(rc4_key, reset=False)
         self.rc4_state_decrypt = RC4(rc4_key, reset=False)
@@ -25,7 +23,7 @@ class PRUDPClient:
         self.state = PRUDPClient.STATE_EXPECT_SYN
         self.last_sig = None
 
-        self.upper = upper
+        self.server = server
         self.client_addr = client_addr
 
         self.client_signature = None
@@ -35,7 +33,6 @@ class PRUDPClient:
         return PRUDPV0Packet.decode(data, self.rc4_state_decrypt)
 
     def handle_data(self, data):
-        #print("<<<", data)
         return self.handle_packet(self.decode_packet(data))
 
     def handle_packet(self, packet):
@@ -43,7 +40,7 @@ class PRUDPClient:
             if packet.op == PRUDPV0Packet.OP_SYN: # SYN
                 self.state = PRUDPClient.STATE_EXPECT_CONNECT
 
-                packet_out = PRUDPV0PacketOut(access_key=self.access_key, sig_version=self.sig_version)
+                packet_out = PRUDPV0PacketOut(client=self)
                 packet_out.source = 0xa1
                 packet_out.dest = 0xaf
                 packet_out.op = PRUDPV0Packet.OP_SYN
@@ -77,7 +74,7 @@ class PRUDPClient:
 
                     parse_connect(None, packet.data)
 
-                packet_out = PRUDPV0PacketOut(upper=self, access_key=self.access_key, sig_version=self.sig_version)
+                packet_out = PRUDPV0PacketOut(client=self)
                 packet_out.source = 0xa1
                 packet_out.dest = 0xaf
                 packet_out.op = PRUDPV0Packet.OP_CONNECT
@@ -104,7 +101,7 @@ class PRUDPClient:
                 # Ack it.
                 # TODO: Fragment reassembly here, if required.
 
-                packet_out = PRUDPV0PacketOut(upper=self, access_key=self.access_key, sig_version=self.sig_version)
+                packet_out = PRUDPV0PacketOut(client=self)
                 packet_out.source = 0xa1
                 packet_out.dest = 0xaf
                 packet_out.op = PRUDPV0Packet.OP_DATA
@@ -118,7 +115,7 @@ class PRUDPClient:
                 return False # Please handle this further.
             elif packet.op == PRUDPV0Packet.OP_HEARTBEAT:
                 # Ack it.
-                packet_out = PRUDPV0PacketOut(upper=self, access_key=self.access_key, sig_version=self.sig_version)
+                packet_out = PRUDPV0PacketOut(client=self)
                 packet_out.source = 0xa1
                 packet_out.dest = 0xaf
                 packet_out.op = PRUDPV0Packet.OP_HEARTBEAT
@@ -130,7 +127,9 @@ class PRUDPClient:
                 self.send_packet(packet_out)
                 return True
             elif packet.op == PRUDPV0Packet.OP_DISCONNECT:
-                packet_out = PRUDPV0PacketOut(upper=self, access_key=self.access_key, sig_version=self.sig_version)
+                del self.server.connections[self.client_addr]
+
+                packet_out = PRUDPV0PacketOut(client=self)
                 packet_out.source = 0xa1
                 packet_out.dest = 0xaf
                 packet_out.op = PRUDPV0Packet.OP_DISCONNECT
@@ -153,4 +152,4 @@ class PRUDPClient:
     def send_packet(self, packet):
         p = packet.encode(self.rc4_state_encrypt)
         #print("Sending ", packet)
-        self.upper.sendto(p, self.client_addr)
+        self.server.sendto(p, self.client_addr)

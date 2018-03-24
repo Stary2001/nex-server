@@ -6,7 +6,8 @@ import hashlib
 from rc4 import RC4
 
 class Friends3DSProtocol:
-    def __init__(self):
+    def __init__(self, server):
+        self.server = server
         self.methods = {}
         self.methods[0x01] = self.update_my_profile
         self.methods[0x02] = self.update_mii

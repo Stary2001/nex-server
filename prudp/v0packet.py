@@ -15,8 +15,8 @@ class PRUDPV0Packet:
     FLAG_NEEDS_ACK = 0x4
     FLAG_HAS_SIZE = 0x8
 
-    def __init__(self, upper=None, source=None, dest=None, op=None, flags=None, session=None, sig=None, seq=None, conn_sig=None, fragment=None, data_size=None, data=None, access_key=None, sig_version=None):
-        self.upper = upper
+    def __init__(self, client=None, source=None, dest=None, op=None, flags=None, session=None, sig=None, seq=None, conn_sig=None, fragment=None, data_size=None, data=None, access_key=None, sig_version=None):
+        self.client = client
         self.source = source
         self.dest = dest
         self.op = op
@@ -28,8 +28,6 @@ class PRUDPV0Packet:
         self.fragment = fragment
         self.data_size = data_size
         self.data = data
-        self.access_key = access_key
-        self.sig_version = sig_version
 
     def __repr__(self):
         s = "source={:02x}, dest={:02x}, op={}, flags={:04x}, session={:02x}, sig={:08x}, seq={:02x}".format(self.source, self.dest, self.op, self.flags, self.session, struct.unpack("<I", self.sig)[0], self.seq)
@@ -104,31 +102,30 @@ class PRUDPV0Packet:
                              data=packet_data)
 
     def calc_data_sig(self, enc_data):
-        if self.sig_version != 0 and self.data_size == 0 or self.data == b'':
+        if self.client.server.sig_version != 0 and self.data_size == 0 or self.data == b'':
                 return b'\x78\x56\x34\x12'
         else:
-            if self.sig_version == 0:
+            if self.client.server.sig_version == 0:
                 if enc_data == None:
                     if self.op == PRUDPV0Packet.OP_DISCONNECT:
                         enc_data = b'\x00'
                     else:
                         enc_data = b''
 
-                if self.upper and self.upper.secure_key != None:
-                    enc_data = self.upper.secure_key + struct.pack("<HB", self.seq, self.fragment) + enc_data
+                if self.client and self.client.server.secure_key != None:
+                    enc_data = self.client.server.secure_key + struct.pack("<HB", self.seq, self.fragment) + enc_data
                 else:
                     enc_data = struct.pack("<HB", self.seq, self.fragment) + enc_data
 
-            key = hashlib.md5(self.access_key).digest()
-            return hmac.HMAC(key, enc_data).digest()[:4]
+            return hmac.HMAC(self.client.server.data_sig_key, enc_data).digest()[:4]
 
     def calc_sig(self, enc_data):
-        if self.op == PRUDPV0Packet.OP_DATA or (self.op == PRUDPV0Packet.OP_DISCONNECT and self.sig_version == 0): #or (self.op == PRUDPV0Packet.OP_CONNECT and self.data != None):
+        if self.op == PRUDPV0Packet.OP_DATA or (self.op == PRUDPV0Packet.OP_DISCONNECT and self.client.server.sig_version == 0): #or (self.op == PRUDPV0Packet.OP_CONNECT and self.data != None):
             return self.calc_data_sig(enc_data)
         elif self.op == PRUDPV0Packet.OP_SYN:
             return b'\x00\x00\x00\x00'
         else:
-            return self.upper.client_signature
+            return self.client.client_signature
 
     def encode(self, rc4_state):
         enc_data = None
@@ -163,7 +160,7 @@ class PRUDPV0Packet:
         if self.data:
             data += enc_data
 
-        data += struct.pack("B", PRUDPV0Packet.calc_checksum(sum(self.access_key), data))
+        data += struct.pack("B", PRUDPV0Packet.calc_checksum(self.client.server.checksum_base, data))
         return data
 
 class PRUDPV0PacketOut(PRUDPV0Packet):

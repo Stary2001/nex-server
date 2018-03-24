@@ -56,6 +56,6 @@ from prudp.protocols.friends_3ds import Friends3DSProtocol
 
 global protocol_list
 protocol_list = {}
-protocol_list[0x0a] = AuthenticationProtocol()
-protocol_list[0x0b] = SecureConnectionProtocol()
-protocol_list[0x65] = Friends3DSProtocol()
+protocol_list[0x0a] = AuthenticationProtocol
+protocol_list[0x0b] = SecureConnectionProtocol
+protocol_list[0x65] = Friends3DSProtocol

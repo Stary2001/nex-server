@@ -3,7 +3,9 @@ import struct
 from binascii import unhexlify
 
 class SecureConnectionProtocol:
-	def __init__(self):
+	def __init__(self, server):
+		self.server = server
+
 		self.methods = {}
 		self.methods[0x01] = self.register
 		self.methods[0x04] = self.register_ex
