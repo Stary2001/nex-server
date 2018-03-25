@@ -115,7 +115,7 @@ class NEXClient(PRUDPClient):
                     # Response?
 
 class NEXServerBase(asyncio.DatagramProtocol):
-    def __init__(self, access_key, sig_version, secure_port=None, secure_key=None, secure_key_length=None):
+    def __init__(self, access_key, sig_version, server_ip=None, secure_port=None, secure_key=None, secure_key_length=None):
         super().__init__()
         self.access_key = access_key
         self.secure_key = secure_key
@@ -126,6 +126,8 @@ class NEXServerBase(asyncio.DatagramProtocol):
             self.secure_key_length = secure_key_length
 
         self.sig_version = sig_version
+        self.server_ip = server_ip
+
         self.connections = {}
         self.scheduler = Scheduler()
         asyncio.ensure_future(self.scheduler.go())
@@ -140,8 +142,8 @@ class NEXServerBase(asyncio.DatagramProtocol):
         return self.transport.sendto(data, addr)
 
 class NEXAuthServer(NEXServerBase):
-    def __init__(self, access_key, secure_port, secure_key_length, sig_version):
-        super().__init__(access_key=access_key, secure_port=secure_port, secure_key_length=secure_key_length, sig_version=sig_version)
+    def __init__(self, access_key, secure_port, secure_key_length, server_ip, sig_version):
+        super().__init__(access_key=access_key, secure_port=secure_port, secure_key_length=secure_key_length, server_ip=server_ip, sig_version=sig_version)
 
     def datagram_received(self, data, addr):
         if not addr in self.connections:
@@ -153,8 +155,8 @@ class NEXAuthServer(NEXServerBase):
         packet = client.handle_data(data)
 
 class NEXSecureServer(NEXServerBase):
-    def __init__(self, access_key=None, secure_key=None, sig_version=None):
-        super().__init__(access_key=access_key, secure_key=secure_key, sig_version=sig_version)
+    def __init__(self, access_key=None, secure_key=None, server_ip=None, sig_version=None):
+        super().__init__(access_key=access_key, secure_key=secure_key, server_ip=server_ip, sig_version=sig_version)
 
     def connection_made(self, transport):
         self.transport = transport

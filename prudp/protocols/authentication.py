@@ -42,7 +42,7 @@ class AuthenticationProtocol:
 
 		success = True
 		result = 0x00010001
-		secure_station_url = 'prudps:/address=192.168.254.1;port=60901;CID=1;PID=2;sid=1;stream=10;type=2'
+		secure_station_url = 'prudps:/address={};port=60901;CID=1;PID=2;sid=1;stream=10;type=2'.format(self.server.server_ip)
 		build = 'branch:origin/feature/45925_FixAutoReconnect build:3_10_11_2006_0'
 
 		return (success, result, (result, user_pid_int, ticket, secure_station_url, [], '', build))
@@ -59,7 +59,7 @@ class AuthenticationProtocol:
 
 		success = True
 		result = 0x00010001
-		secure_station_url = 'prudps:/address=192.168.254.1;port=60801;CID=1;PID=2;sid=1;stream=10;type=2'
+		secure_station_url = 'prudps:/address={};port=60801;CID=1;PID=2;sid=1;stream=10;type=2'.format(self.server.server_ip)
 		build = 'branch:amk_server_branch build:2_17_11578_0'
 
 		return (success, result, (result, user_pid_int, ticket, secure_station_url, [], '', build))
