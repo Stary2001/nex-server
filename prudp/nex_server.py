@@ -6,6 +6,7 @@ from binascii import hexlify
 from prudp.server import PRUDPClient
 from prudp.v0packet import PRUDPV0Packet, PRUDPV0PacketOut
 from prudp.protocols import protocol_list
+from prudp.events import Scheduler
 from rc4 import RC4
 
 import traceback
@@ -23,7 +24,6 @@ class NEXClient(PRUDPClient):
             self.secure_key = None
 
         self.last_call_id = 0
-        self.last_seq = 1
         self.cached_protos = {}
 
     def handle_packet(self, packet):
@@ -94,6 +94,7 @@ class NEXClient(PRUDPClient):
                         resp_header += struct.pack("<I", result)
                         resp_header += struct.pack("<I", call_id)
 
+                    print("Response: result {}, success {}".format(result,success))
                     # Send a response.
                     packet_out = PRUDPV0PacketOut(client=self)
                     packet_out.source = 0xa1
@@ -109,7 +110,6 @@ class NEXClient(PRUDPClient):
                     if success:
                         packet_out.data += response
                     self.send_packet(packet_out)
-
                 else:
                     pass
                     # Response?
@@ -127,7 +127,8 @@ class NEXServerBase(asyncio.DatagramProtocol):
 
         self.sig_version = sig_version
         self.connections = {}
-        self.events = []
+        self.scheduler = Scheduler()
+        asyncio.ensure_future(self.scheduler.go())
 
         self.data_sig_key = hashlib.md5(self.access_key).digest()
         self.checksum_base = sum(self.access_key)
@@ -137,9 +138,6 @@ class NEXServerBase(asyncio.DatagramProtocol):
 
     def sendto(self, data, addr):
         return self.transport.sendto(data, addr)
-
-# TODO: big issue with this is stray UDP packets.
-# Time out connections after <some time> of lingering in STATE_EXPECT_SYN.
 
 class NEXAuthServer(NEXServerBase):
     def __init__(self, access_key, secure_port, secure_key_length, sig_version):
@@ -153,8 +151,6 @@ class NEXAuthServer(NEXServerBase):
             client = self.connections[addr]
 
         packet = client.handle_data(data)
-        if packet:
-            print("paket????", packet)
 
 class NEXSecureServer(NEXServerBase):
     def __init__(self, access_key=None, secure_key=None, sig_version=None):

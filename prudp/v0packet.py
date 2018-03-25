@@ -103,7 +103,7 @@ class PRUDPV0Packet:
 
     def calc_data_sig(self, enc_data):
         if self.client.server.sig_version != 0 and self.data_size == 0 or self.data == b'':
-                return b'\x78\x56\x34\x12'
+            return b'\x78\x56\x34\x12'
         else:
             if self.client.server.sig_version == 0:
                 if enc_data == None:
@@ -119,13 +119,13 @@ class PRUDPV0Packet:
 
             return hmac.HMAC(self.client.server.data_sig_key, enc_data).digest()[:4]
 
-    def calc_sig(self, enc_data):
+    def calc_sig(self, enc_data, signature):
         if self.op == PRUDPV0Packet.OP_DATA or (self.op == PRUDPV0Packet.OP_DISCONNECT and self.client.server.sig_version == 0): #or (self.op == PRUDPV0Packet.OP_CONNECT and self.data != None):
             return self.calc_data_sig(enc_data)
         elif self.op == PRUDPV0Packet.OP_SYN:
             return b'\x00\x00\x00\x00'
         else:
-            return self.client.client_signature
+            return signature
 
     def encode(self, rc4_state):
         enc_data = None
@@ -137,7 +137,7 @@ class PRUDPV0Packet:
 
         sig = None
         if self.sig == None:
-            self.sig = self.calc_sig(enc_data)
+            self.sig = self.calc_sig(enc_data, self.client.client_signature)
 
         if self.op == PRUDPV0Packet.OP_SYN or self.op == PRUDPV0Packet.OP_CONNECT and self.conn_sig == None:
             self.conn_sig = b'\x00\x00\x00\x00'
