@@ -20,7 +20,7 @@ class SecureConnectionProtocol:
 		url = ""
 		return (success, result, (result, pid_conn_id, url))
 
-	@incoming("list<string>", "string", "u32", "u8[*]")
+	@incoming("list<string>", "string", "u32", "Buffer")
 	@outgoing("u32", "u32", "string")
 	def register_ex(self, client_urls, dataholder_name, d_len, buff):
 		success = True

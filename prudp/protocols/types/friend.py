@@ -1,98 +1,137 @@
-from .basic import Type, BasicU8, BasicU32, BasicU64, String, Bool, Buffer, ListBuffer, ListType, NEXDateTime
-import struct
+import nintendo.nex.common as common
 
-class Mii:
-	def __init__(self, name, unk_bool, unk_u8, mii_data):
+class MiiV1(common.Data):
+	def __init__(self, name, unk1, unk2, data):
 		self.name = name
-		self.unk_bool = unk_bool
-		self.unk_u8 = unk_u8
-		self.mii_data = mii_data
+		self.unk1 = unk1
+		self.unk2 = unk2
+		self.data = data
 
-class MiiType(Type):
-	def __init__(self):
-		super().__init__("Mii")
+	def get_name(self):
+		return "MiiV1"
 
-	def pack(self, to_pack):
-		raise NotImplementedError("Mii packing is unimplemented!")
+	def streamin(self, stream):
+		stream.string(self.name)
+		stream.u8(self.unk1)
+		stream.u8(self.unk2)
+		stream.buffer(self.data.build())
 
-	def unpack(self, to_unpack):
-		name, name_len = String.unpack(to_unpack)
-		unk_bool, _ = Bool.unpack(to_unpack[name_len:])
-		unk_u8, _ = BasicU8.unpack(to_unpack[name_len + 1:])
-		mii_data, mii_data_len = Buffer.unpack(to_unpack[name_len + 2:])
-		return Mii(name, unk_bool, unk_u8, mii_data), name_len + 2 + mii_data_len
+	def streamout(self, stream):
+		self.name = stream.string()
+		self.unk1 = stream.u8()
+		self.unk2 = stream.u8()
+		self.data = miis.MiiData.parse(stream.buffer())
+common.DataHolder.register(MiiV1, "MiiV1")
 
-class MiiList:
-	def __init__(self, name, unk_bool, unk_u8, mii_data_list):
+class MiiV2(common.Data):
+	def __init__(self, name, unk1, unk2, data, datetime):
 		self.name = name
-		self.unk_bool = unk_bool
-		self.unk_u8 = unk_u8
+		self.unk1 = unk1
+		self.unk2 = unk2
+		self.data = data
+		self.datetime = datetime
+
+	def get_name(self):
+		return "MiiV2"
+
+	def streamin(self, stream):
+		stream.string(self.name)
+		stream.u8(self.unk1)
+		stream.u8(self.unk2)
+		stream.buffer(self.data.build())
+		stream.datetime(self.datetime)
+
+	def streamout(self, stream):
+		self.name = stream.string()
+		self.unk1 = stream.u8()
+		self.unk2 = stream.u8()
+		self.data = miis.MiiData.parse(stream.buffer())
+		self.datetime = stream.datetime()
+common.DataHolder.register(MiiV2, "MiiV2")
+
+class MiiList(common.Data):
+	def __init__(self, name, unk1, unk2, mii_data_list):
+		self.name = name
+		self.unk1 = unk1
+		self.unk2 = unk2
 		self.mii_data_list = mii_data_list
 
-class MiiListType(Type):
-	def __init__(self):
-		super().__init__("MiiList")
+	def get_name(self):
+		return "MiiList"
 
-	def pack(self, to_pack):
+	def streamout(self, stream):
 		raise NotImplementedError("Mii list packing is unimplemented!")
 
-	def unpack(self, to_unpack):
-		name, name_len = String.unpack(to_unpack)
-		unk_bool, unk_bool_len = Bool.unpack(to_unpack[name_len:])
-		unk_u8, _ = BasicU8.unpack(to_unpack[name_len + 1:])
-		mii_data_list, mii_data_list_len = ListBuffer.unpack(to_unpack[name_len + 2:])
+	def streamin(self, stream):
+		self.name = stream.string()
+		self.unk_bool = stream.bool()
+		self.unk_u8 = stream.u8()
+		self.mii_data_list = stream.list(stream.buffer)
 
-		return MiiList(name, unk_bool, unk_u8, miis), name_len + 2 + mii_data_list_len
+common.DataHolder.register(MiiList, "MiiList")
 
-class FriendRelationship:
-	def __init__(self, unk_u32, unk_u64, unk_u8):
-		self.unk_u32 = unk_u32
-		self.unk_u64 = unk_u64
-		self.unk_u8 = unk_u8
+class PrincipalBasicInfo(common.Data):
+	def __init__(self, pid, nnid, mii, unk):
+		self.pid = pid
+		self.nnid = nnid
+		self.mii = mii
+		self.unk = unk
 
-class FriendRelationshipType(Type):
-	def __init__(self):
-		super().__init__("FriendRelationship")
+	def get_name(self):
+		return "PrincipalBasicInfo"
 
-	def pack(self, to_pack):
-		raise NotImplementedError("FriendRelationship packing is unimplemented!")
+	def streamin(self, stream):
+		stream.u32(self.pid)
+		stream.string(self.nnid)
+		stream.add(self.mii)
+		stream.u8(self.unk)
 
-	def unpack(self, to_unpack):
-		raise NotImplementedError("FriendRelationship unpacking is unimplemented!")
+	def streamout(self, stream):
+		self.pid = stream.u32()
+		self.nnid = stream.string()
+		self.mii = stream.extract(MiiV2)
+		self.unk = stream.u8()
+common.DataHolder.register(PrincipalBasicInfo, "PrincipalBasicInfo")
 
-class PlayedGame:
-	def __init__(self, game_key, timestamp):
-		self.game_key = game_key
-		self.timestamp = timestamp
+class NNAInfo(common.Data):
+	def __init__(self, principal_info, unk1, unk2):
+		self.principal_info = principal_info
+		self.unk1 = unk1
+		self.unk2 = unk2
 
-class PlayedGameType(Type):
-	def __init__(self):
-		super().__init__("PlayedGame")
+	def get_name(self):
+		return "NNAInfo"
 
-	def pack(self, to_pack):
-		raise NotImplementedError("PlayedGame packing is unimplemented!")
+	def streamin(self, stream):
+		stream.add(self.principal_info)
+		stream.u8(self.unk1)
+		stream.u8(self.unk2)
 
-	def unpack(self, to_unpack):
-		game_key, game_key_len = GameKey_Instance.unpack()
-		timestamp = NEXDateTime.unpack(to_unpack[game_key_len:])
+	def streamout(self, stream):
+		self.principal_info = stream.extract(PrincipalBasicInfo)
+		self.unk1 = stream.u8()
+		self.unk2 = stream.u8()
+common.DataHolder.register(NNAInfo, "NNAInfo")
 
-class GameKey:
+class GameKey(common.Data):
 	def __init__(self, title_id, title_version):
 		self.title_id = title_id
 		self.title_version = title_version
 
-class GameKeyType(Type):
-	def __init__(self):
-		super().__init__("GameKey")
+	def get_name(self):
+		return "GameKey"
 
-	def pack(self, to_pack):
-		raise NotImplementedError("GameKey packing is unimplemented!")
+	def streamin(self, stream):
+		stream.u64(self.title_id)
+		stream.u16(self.title_version)
 
-	def unpack(self, to_unpack):
-		tid, version = struct.unpack("<QH", to_unpack[:10])
-		return GameKey(tid, version), 10
+	def streamout(self, stream):
+		self.title_id = stream.u64()
+		self.title_version = stream.u16()
+common.DataHolder.register(GameKey, "GameKey")
 
-class NintendoPresence:
+
+class NintendoPresenceV1(common.Data):
 	def __init__(self, unk_u32_1, game_key, message, unk_u32_2, unk_u8, unk_u32_3, unk_u32_4, unk_u32_5, unk_u32_6, unk_buffer):
 		self.unk_u32_1 = unk_u32_1
 		self.game_key = game_key
@@ -105,74 +144,161 @@ class NintendoPresence:
 		self.unk_u32_6 = unk_u32_6
 		self.unk_buffer = unk_buffer
 
-class NintendoPresenceType(Type):
-	def __init__(self):
-		super().__init__("NintendoPresence")
+	def get_name(self):
+		return "NintendoPresenceV1"
 
-	def pack(self, to_pack):
-		raise NotImplementedError("NintendoPresence packing is unimplemented!")
+	def streamin(self, stream):
+		self.unk_u32_1 = stream.u32()
+		self.game_key = stream.extract(GameKey)
+		self.message = stream.string()
+		self.unk_u32_2 = stream.u32()
+		self.unk_u8 = stream.u8()
+		self.unk_u32_3 = stream.u32()
+		self.unk_u32_4 = stream.u32()
+		self.unk_u32_5 = stream.u32()
+		self.unk_u32_6 = stream.u32()
+		self.unk_buffer = stream.buffer()
+common.DataHolder.register(NintendoPresenceV1, "NintendoPresenceV1")
 
-	def unpack(self, to_unpack):
-		unk_u32_1, _ = BasicU32.unpack(to_unpack)
-		game_key, game_key_len = GameKey_Instance.unpack(to_unpack[4:])
-		message, message_len = String.unpack(to_unpack[4+game_key_len:])
-		unk_u32_2, _ = BasicU32.unpack(to_unpack[game_key_len+message_len+4:])
-		unk_u8, _ = BasicU8.unpack(to_unpack[game_key_len+message_len+8:])
-		unk_u32_3, _ = BasicU32.unpack(to_unpack[game_key_len+message_len+9:])
-		unk_u32_4, _ = BasicU32.unpack(to_unpack[game_key_len+message_len+13:])
-		unk_u32_5, _ = BasicU32.unpack(to_unpack[game_key_len+message_len+17:])
-		unk_u32_6, _ = BasicU32.unpack(to_unpack[game_key_len+message_len+21:])
-		unk_buffer, buffer_len = Buffer.unpack(to_unpack[game_key_len+message_len+25:])
-
-		return NintendoPresence(
-			unk_u32_1,
-			game_key,
-			message,
-			unk_u32_2,
-			unk_u8,
-			unk_u32_3,
-			unk_u32_4,
-			unk_u32_5,
-			unk_u32_6,
-			unk_buffer), 25 + game_key_len + message_len + buffer_len
-
-class FriendPresence:
-	def __init__(self, unk_u32, nintendo_presence):
-		self.unk_u32 = unk_u32
-		self.nintendo_presence = nintendo_presence
-
-class FriendPresenceType(Type):
-	def __init__(self):
-		super().__init__("FriendPresence")
-
-	def pack(self, to_pack):
-		raise NotImplementedError("FriendPresence packing is unimplemented!")
-
-	def unpack(self, to_unpack):
-		unk_u32, _ = BasicU32.unpack(to_unpack[0:4])
-		nintendo_presence, nintendo_presence_len = NintendoPresence_Instance.unpack(to_unpack[4:])
-		return FriendPresence(unk_u32, nintendo_presence), nintendo_presence_len + 4
-
-class FriendPicture:
-	def __init__(self, unk_u32, data, timestamp):
-		self.unk_u32 = unk_u32
+class NintendoPresenceV2(common.Data):
+	def __init__(self, unk1, is_online, game_key, unk3, message, unk4, unk5,
+				 game_server_id, unk7, pid, gathering_id, data, unk10, unk11, unk12):
+		self.unk1 = unk1
+		self.is_online = is_online
+		self.game_key = game_key
+		self.unk3 = unk3
+		self.message = message
+		self.unk4 = unk4
+		self.unk5 = unk5
+		self.game_server_id = game_server_id
+		self.unk7 = unk7
+		self.pid = pid
+		self.gathering_id = gathering_id
 		self.data = data
-		self.timestamp = timestamp
+		self.unk10 = unk10
+		self.unk11 = unk11
+		self.unk12 = unk12
 
-class FriendPictureType(Type):
-	def __init__(self):
-		super().__init__("FriendPicture")
+	def get_name(self):
+		return "NintendoPresenceV2"
 
-	def pack(self, to_pack):
-		raise NotImplementedError("FriendPicture packing is unimplemented!")
+	def streamin(self, stream):
+		stream.u32(self.unk1)
+		stream.u8(self.is_online)
+		stream.add(self.game_key)
+		stream.u8(self.unk3)
+		stream.string(self.message)
+		stream.u32(self.unk4)
+		stream.u8(self.unk5)
+		stream.u32(self.game_server_id)
+		stream.u32(self.unk7)
+		stream.u32(self.pid)
+		stream.u32(self.gathering_id)
+		stream.buffer(self.data)
+		stream.u8(self.unk10)
+		stream.u8(self.unk11)
+		stream.u8(self.unk12)
 
-	def unpack(self, to_unpack):
-		unk_u32, _ = BasicU32.unpack(to_unpack[0:4])
-		data, data_len = Buffer.unpack(to_unpack[4:])
-		timestamp, timestamp_len = NEXDateTime.unpack(to_unpack[data_len + 4:])
-		return FriendPicture(unk_u32, data, timestamp), data_len + 4 + 8
+	def streamout(self, stream):
+		self.unk1 = stream.u32()
+		self.is_online = stream.u8()
+		self.game_key = stream.extract(GameKey)
+		self.unk3 = stream.u8()
+		self.message = stream.string()
+		self.unk4 = stream.u32()
+		self.unk5 = stream.u8()
+		self.game_server_id = stream.u32()
+		self.unk7 = stream.u32()
+		self.pid = stream.u32()
+		self.gathering_id = stream.u32()
+		self.data = stream.buffer()
+		self.unk10 = stream.u8()
+		self.unk11 = stream.u8()
+		self.unk12 = stream.u8()
+common.DataHolder.register(NintendoPresenceV2, "NintendoPresenceV2")
 
-class FriendPersistentInfo:
+
+class PrincipalPreference(common.Data):
+	def get_name(self):
+		return "PrincipalPreference"
+
+	def streamout(self, stream):
+		self.unk1 = stream.bool()
+		self.unk2 = stream.bool()
+		self.unk3 = stream.bool()
+common.DataHolder.register(PrincipalPreference, "PrincipalPreference")
+
+
+class Comment(common.Data):
+	"""This is the status message shown in the friend list"""
+	def get_name(self):
+		return "Comment"
+
+	def streamout(self, stream):
+		self.unk = stream.u8()
+		self.text = stream.string()
+		self.changed = stream.datetime()
+common.DataHolder.register(Comment, "Comment")
+
+
+class FriendInfo(common.Data):
+	def get_name(self):
+		return "FriendInfo"
+
+	def streamout(self, stream):
+		self.nna_info = stream.extract(NNAInfo)
+		self.presence = stream.extract(NintendoPresenceV2)
+		self.comment = stream.extract(Comment)
+		self.befriended = stream.datetime()
+		self.last_online = stream.datetime()
+		self.unk = stream.u64()
+common.DataHolder.register(FriendInfo, "FriendInfo")
+
+
+class FriendRequestMessage(common.Data):
+	def get_name(self):
+		return "FriendRequestMessage"
+
+	def streamout(self, stream):
+		self.unk1 = stream.u64()
+		self.unk2 = stream.u8()
+		self.unk3 = stream.u8()
+		self.message = stream.string()
+		self.unk4 = stream.u8()
+		self.string = stream.string()
+		self.game_key = stream.extract(GameKey)
+		self.datetime = stream.datetime()
+		self.expires = stream.datetime()
+common.DataHolder.register(FriendRequestMessage, "FriendRequestMessage")
+
+
+class FriendRequest(common.Data):
+	def get_name(self):
+		return "FriendRequest"
+
+	def streamout(self, stream):
+		self.principal_info = stream.extract(PrincipalBasicInfo)
+		self.message = stream.extract(FriendRequestMessage)
+		self.sent = stream.datetime()
+common.DataHolder.register(FriendRequest, "FriendRequest")
+
+
+class FriendRelationship(common.Data):
+	def __init__(self, unk_u32, unk_u64, unk_u8):
+		self.unk_u32 = unk_u32
+		self.unk_u64 = unk_u64
+		self.unk_u8 = unk_u8
+
+	def get_name(self):
+		return "FriendRelationship"
+
+	def streamin(self, stream):
+		self.unk_u32 = stream.u32()
+		self.unk_u64 = stream.u64()
+		self.unk_u8 = unk_u8
+common.DataHolder.register(FriendRelationship, "FriendRelationship")
+
+class FriendPersistentInfo():
 	def __init__(self, unk_u32, unk_u8_1, unk_u8_2, unk_u8_3, unk_u8_4, unk_u8_5, game_key, unk_string, unk_timestamp_1, unk_timestamp_2, unk_timestamp_3):
 		self.unk_u32 = unk_u32
 		self.unk_u8_1 = unk_u8_1
@@ -186,80 +312,120 @@ class FriendPersistentInfo:
 		self.unk_timestamp_2 = unk_timestamp_2
 		self.unk_timestamp_3 = unk_timestamp_3
 
-class FriendPersistentInfoType(Type):
-	def __init__(self):
-		super().__init__("FriendPersistentInfo")
+	def get_name(self):
+		return "FriendPersistentInfo"
 
-	def pack(self, to_pack):
-		raise NotImplementedError("FriendPersistentInfo packing is unimplemented!")
+	def streamin(self, stream):
+		self.unk_u32 = stream.u32()
+		self.unk_u8_1 = stream.u8()
+		self.unk_u8_2 = stream.u8()
+		self.unk_u8_3 = stream.u8()
+		self.unk_u8_4 = stream.u8()
+		self.unk_u8_5 = stream.u8()
 
-	def unpack(self, to_unpack):
-		unk_u32, _ = BasicU32.unpack(to_unpack[0:4])
-		unk_u8_1, _ = BasicU8.unpack(to_unpack[4:5])
-		unk_u8_2, _ = BasicU8.unpack(to_unpack[5:6])
-		unk_u8_3, _ = BasicU8.unpack(to_unpack[6:7])
-		unk_u8_4, _ = BasicU8.unpack(to_unpack[7:8])
-		unk_u8_5, _ = BasicU8.unpack(to_unpack[8:9])
+		self.game_key = stream.extract(GameKey)
+		self.unk_string = stream.string()
+		self.unk_timestamp_1 = stream.datetime()
+		self.unk_timestamp_2 = stream.datetime()
+		self.unk_timestamp_3 = stream.datetime()
 
-		game_key, _ = GameKey_Instance.unpack(to_unpack[9:])
-		unk_string, unk_string_len = String.unpack(to_unpack[19:])
-		unk_timestamp_1, _ = NEXDateTime.unpack(to_unpack[unk_string_len + 19:])
-		unk_timestamp_2, _ = NEXDateTime.unpack(to_unpack[unk_string_len + 27:])
-		unk_timestamp_3, _ = NEXDateTime.unpack(to_unpack[unk_string_len + 35:])
+	def streamout(self, stream):
+		raise NotImplementedError("no")
+common.DataHolder.register(FriendPersistentInfo, "FriendPersistentInfo")
 
-		return FriendPersistentInfo(unk_u32, unk_u8_1, unk_u8_2, unk_u8_3, unk_u8_4, unk_u8_5, game_key, unk_string, unk_timestamp_1, unk_timestamp_2, unk_timestamp_3), unk_string_len + 43
+class FriendPresence(common.Data):
+	def __init__(self, unk_u32, nintendo_presence):
+		self.unk_u32 = unk_u32
+		self.nintendo_presence = nintendo_presence
 
-class MyProfile:
+	def get_name(self):
+		return "FriendPresence"
+
+	def streamin(self, stream):
+		self.unk_u32 = stream.u32()
+		self.nintendo_presence = stream.extract(NintendoPresenceV1)
+common.DataHolder.register(FriendPresence, "FriendPresence")
+
+class FriendPicture:
+	def __init__(self, unk_u32, data, timestamp):
+		self.unk_u32 = unk_u32
+		self.data = data
+		self.timestamp = timestamp
+
+	def get_name(self):
+		return "FriendPicture"
+
+	def streamin(self, stream):
+		self.unk_u32 = data.u32()
+		self.data = data.buffer()
+		self.timestamp = data.datetime()
+
+	def streamout(self, stream):
+		raise NotImplementedError("no")
+
+common.DataHolder.register(FriendPicture, "FriendPicture")
+
+class BlacklistedPrincipal(common.Data):
+	def get_name(self):
+		return "BlacklistedPrincipal"
+
+	def streamout(self, stream):
+		self.principal_info = stream.extract(PrincipalBasicInfo)
+		self.game_key = stream.extract(GameKey)
+		self.since = stream.datetime()
+common.DataHolder.register(BlacklistedPrincipal, "BlacklistedPrincipal")
+
+
+class PersistentNotification(common.Data):
+	def get_name(self):
+		return "PersistentNotification"
+
+	def streamout(self, stream):
+		self.unk1 = stream.u64()
+		self.unk2 = stream.u32()
+		self.unk3 = stream.u32()
+		self.unk4 = stream.u32()
+		self.string = stream.string()
+common.DataHolder.register(PersistentNotification, "PersistentNotification")
+
+
+class PlayedGame(common.Data):
+	def __init__(self, game_key, timestamp):
+		self.game_key = game_key
+		self.timestamp = timestamp
+
+	def get_name(self):
+		return "PlayedGame"
+
+	def pack(self, stream):
+		raise NotImplementedError("PlayedGame packing is unimplemented!")
+
+	def streamin(self, stream):
+		game_key = stream.extract(GameKey)
+		timestamp = stream.datetime()
+common.DataHolder.register(PlayedGame, "PlayedGame")
+
+class MyProfile(common.Data):
 	def __init__(self, unk_u8_1, unk_u8_2, unk_u8_3, unk_u8_4, unk_u8_5, unk_u64, unk_string_1, unk_string_2):
 		self.unk_u8_1 = unk_u8_1
 		self.unk_u8_2 = unk_u8_2
 		self.unk_u8_3 = unk_u8_3
 		self.unk_u8_4 = unk_u8_4
 		self.unk_u8_5 = unk_u8_5
-
 		self.unk_u64 = unk_u64
 		self.unk_string_1 = unk_string_1
 		self.unk_string_2 = unk_string_2
 
-class MyProfileType(Type):
-	def __init__(self):
-		super().__init__("MyProfile")
+	def get_name(self):
+		return "MyProfile"
 
-	def pack(self, to_pack):
-		raise NotImplementedError("MyProfile packing is unimplemented!")
-
-	def unpack(self, to_unpack):
-		unk_u8_1, _ = BasicU8.unpack(to_unpack)
-		unk_u8_2, _ = BasicU8.unpack(to_unpack[1:])
-		unk_u8_3, _ = BasicU8.unpack(to_unpack[2:])
-		unk_u8_4, _ = BasicU8.unpack(to_unpack[3:])
-		unk_u8_5, _ = BasicU8.unpack(to_unpack[4:])
-
-		unk_u64, _ = BasicU64.unpack(to_unpack[5:])
-		unk_string_1, unk_string_1_len = String.unpack(to_unpack[13:])
-		unk_string_2, unk_string_2_len = String.unpack(to_unpack[13 + unk_string_1_len:])
-
-		return MyProfile(unk_u8_1, unk_u8_2, unk_u8_3, unk_u8_4, unk_u8_5, unk_u64, unk_string_1, unk_string_2), 13 + unk_string_1_len + unk_string_2_len
-
-Mii_Instance = MiiType()
-MiiList_Instance = MiiListType()
-
-FriendRelationship_Instance = FriendRelationshipType()
-ListFriendRelationship = ListType(FriendRelationship_Instance)
-
-PlayedGame_Instance = PlayedGameType()
-ListPlayedGame = ListType(PlayedGame_Instance)
-
-GameKey_Instance = GameKeyType()
-
-NintendoPresence_Instance = NintendoPresenceType()
-FriendPresence_Instance = FriendPresenceType()
-ListFriendPresence = ListType(FriendPresence_Instance)
-
-MyProfile_Instance = MyProfileType()
-
-FriendPersistentInfo_Instance = FriendPersistentInfoType()
-ListFriendPersistentInfo = ListType(FriendPersistentInfo_Instance)
-
-FriendPicture_Instance = FriendPictureType()
-ListFriendPicture = ListType(FriendPicture_Instance)
+	def streamin(self, stream):
+		self.unk_u8_1 = stream.u8()
+		self.unk_u8_2 = stream.u8()
+		self.unk_u8_3 = stream.u8()
+		self.unk_u8_4 = stream.u8()
+		self.unk_u8_5 = stream.u8()
+		self.unk_u64 = stream.u64()
+		self.unk_string_1 = stream.string()
+		self.unk_string_2 = stream.string()
+common.DataHolder.register(MyProfile, "MyProfile")

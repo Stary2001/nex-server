@@ -33,12 +33,12 @@ class Friends3DSProtocol:
         self.methods[0x19] = self.get_friend_persistent_info
         # 0x1a
 
-    @incoming("FriendsProfile")
+    @incoming("MyProfile")
     def update_my_profile(self, profile):
         print(profile)
         return (True, 0x00010001, None)
 
-    @incoming("Mii")
+    @incoming("MiiV1")
     def update_mii(self, mii):
         print(mii)
         return (True, 0x00010001, None)
@@ -77,7 +77,7 @@ class Friends3DSProtocol:
         print("method 0e:", data)
         return (True, 0x00010001, None)
 
-    @outgoing("List<FriendRelationship>")
+    @outgoing("list<FriendRelationship>")
     def get_all_friends(self, _):
         return (True, 0x00010001, ([],))
 
@@ -87,7 +87,7 @@ class Friends3DSProtocol:
         print("SyncFriend: {:016x}".format(mostly_lfcs), principal_ids, unknown)
         return (True, 0x00010001, ([],))
 
-    @incoming("NintendoPresence", "bool")
+    @incoming("NintendoPresenceV1", "bool")
     def update_presence(self, presence, unk_bool):
         print("update_presence:", "{:016x}".format(presence.game_key.title_id), unk_bool)
         return (True, 0x00010001, None)

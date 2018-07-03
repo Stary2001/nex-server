@@ -31,7 +31,7 @@ class AuthenticationProtocol:
 		return ticket
 
 	@incoming('string')
-	@outgoing('u32', 'u32', 'u8[*]', 'string', 'list<u8>', 'string', 'string')
+	@outgoing('u32', 'u32', 'buffer', 'string', 'list<u8>', 'string', 'string')
 	def login(self, user_pid):
 		user_pid_int = int(user_pid)
 		password = "|+GF-i):/7Z87_:q"
@@ -48,7 +48,7 @@ class AuthenticationProtocol:
 		return (success, result, (result, user_pid_int, ticket, secure_station_url, [], '', build))
 
 	@incoming('string', 'string', 'u32', 'Buffer')
-	@outgoing('u32', 'u32', 'u8[*]', 'string', 'list<u8>', 'string', 'string')
+	@outgoing('u32', 'u32', 'buffer', 'string', 'list<u8>', 'string', 'string')
 	def login_ex(self, user_pid, *a):
 		user_pid_int = int(user_pid)
 		password = "|+GF-i):/7Z87_:q"
@@ -65,7 +65,7 @@ class AuthenticationProtocol:
 		return (success, result, (result, user_pid_int, ticket, secure_station_url, [], '', build))
 
 	@incoming('u32', 'u32')
-	@outgoing('u32', 'u8[*]')
+	@outgoing('u32', 'buffer')
 	def request_token(self, user_pid, secure_server_pid):
 		print("token req", user_pid, secure_server_pid)
 		success = True

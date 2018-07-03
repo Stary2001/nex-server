@@ -2,7 +2,6 @@ import struct
 from rc4 import RC4
 import hashlib
 import hmac
-from .basic import Type
 
 class KerberosContainer():
 	def __init__(self, user_pid=None, user_password=None, key=None):
@@ -38,8 +37,3 @@ class KerberosContainer():
 		ticket += ticket_mac.digest()
 
 		return ticket
-
-class KerberosTicket:
-	def pack():
-		unk_u32 = struct.pack("I", step)
-		full_ticket = secure_key + unk_u32 + struct.pack("I", len(ticket_data)) + ticket_data

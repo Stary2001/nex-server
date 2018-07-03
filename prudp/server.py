@@ -6,9 +6,9 @@ from prudp.protocols import protocol_list
 from rc4 import RC4
 from binascii  import hexlify
 from prudp.protocols import incoming
-from prudp.protocols.types import Type
 from prudp.protocols.types.kerberos import KerberosContainer
 from prudp.events import Event
+from nintendo.nex.streams import StreamOut
 
 class PRUDPClient:
     STATE_EXPECT_SYN = 0
@@ -81,7 +81,7 @@ class PRUDPClient:
                 check = 0
                 # TODO: eww, hack
                 if packet.data != b'':
-                    @incoming('u8[*]', 'u8[*]')
+                    @incoming('buffer', 'buffer')
                     def parse_connect(fself, a, b):
                         nonlocal check
                         k2, k2_len = KerberosContainer(key=self.key).unpack(b)
@@ -100,9 +100,10 @@ class PRUDPClient:
                 packet_out.session = packet.session
                 packet_out.seq = packet.seq
                 if packet.data != b'':
-                    check_buffer = Type.get_type('u8[*]').pack(struct.pack("<I", check + 1))
-                    packet_out.data = check_buffer
-                    packet_out.data_size = len(check_buffer)
+                    s = StreamOut()
+                    s.buffer(struct.pack("<I", check + 1))
+                    packet_out.data = s.data
+                    packet_out.data_size = len(s.data)
                 else:
                     packet_out.data_size = 0
                 packet_out.sig = packet.conn_sig
