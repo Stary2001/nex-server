@@ -64,6 +64,7 @@ class Friends3DSProtocol:
         return (True, 0x00010001, ([],))
 
     @incoming("u64", "u32")
+    @outgoing("FriendRelationship")
     def add_friend_by_principal_id(self, mostly_lfcs, principal_id):
         print("add friend by principal id:", mostly_lfcs, principal_id)
         return (True, 0x00010001, None)

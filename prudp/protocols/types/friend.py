@@ -9,18 +9,20 @@ class MiiV1(common.Data):
 
 	def get_name(self):
 		return "MiiV1"
-
+#TODO: pull in Mii from kinnay code
 	def streamin(self, stream):
 		stream.string(self.name)
 		stream.u8(self.unk1)
 		stream.u8(self.unk2)
-		stream.buffer(self.data.build())
+		stream.buffer(self.data)
+		#stream.buffer(self.data.build())
 
 	def streamout(self, stream):
 		self.name = stream.string()
 		self.unk1 = stream.u8()
 		self.unk2 = stream.u8()
-		self.data = miis.MiiData.parse(stream.buffer())
+		self.data = stream.buffer()
+		#self.data = miis.MiiData.parse(stream.buffer())
 common.DataHolder.register(MiiV1, "MiiV1")
 
 class MiiV2(common.Data):
@@ -59,10 +61,10 @@ class MiiList(common.Data):
 	def get_name(self):
 		return "MiiList"
 
-	def streamout(self, stream):
+	def streamin(self, stream):
 		raise NotImplementedError("Mii list packing is unimplemented!")
 
-	def streamin(self, stream):
+	def streamout(self, stream):
 		self.name = stream.string()
 		self.unk_bool = stream.bool()
 		self.unk_u8 = stream.u8()
@@ -147,7 +149,7 @@ class NintendoPresenceV1(common.Data):
 	def get_name(self):
 		return "NintendoPresenceV1"
 
-	def streamin(self, stream):
+	def streamout(self, stream):
 		self.unk_u32_1 = stream.u32()
 		self.game_key = stream.extract(GameKey)
 		self.message = stream.string()
@@ -284,18 +286,24 @@ common.DataHolder.register(FriendRequest, "FriendRequest")
 
 
 class FriendRelationship(common.Data):
-	def __init__(self, unk_u32, unk_u64, unk_u8):
-		self.unk_u32 = unk_u32
-		self.unk_u64 = unk_u64
-		self.unk_u8 = unk_u8
+	def __init__(self, principal_id, friend_code, is_complete):
+		self.principal_id = principal_id
+		self.friend_code = friend_code
+		self.is_complete = is_complete
 
 	def get_name(self):
 		return "FriendRelationship"
 
 	def streamin(self, stream):
-		self.unk_u32 = stream.u32()
-		self.unk_u64 = stream.u64()
-		self.unk_u8 = unk_u8
+		stream.u32(self.principal_id)
+		stream.u64(self.friend_code)
+		stream.bool(self.is_complete)
+
+	def streamout(self, stream):
+		self.principal_id = stream.u32()
+		self.friend_code = stream.u64()
+		self.is_complete = stream.bool()
+
 common.DataHolder.register(FriendRelationship, "FriendRelationship")
 
 class FriendPersistentInfo():
@@ -315,7 +323,7 @@ class FriendPersistentInfo():
 	def get_name(self):
 		return "FriendPersistentInfo"
 
-	def streamin(self, stream):
+	def streamout(self, stream):
 		self.unk_u32 = stream.u32()
 		self.unk_u8_1 = stream.u8()
 		self.unk_u8_2 = stream.u8()
@@ -329,7 +337,7 @@ class FriendPersistentInfo():
 		self.unk_timestamp_2 = stream.datetime()
 		self.unk_timestamp_3 = stream.datetime()
 
-	def streamout(self, stream):
+	def streamin(self, stream):
 		raise NotImplementedError("no")
 common.DataHolder.register(FriendPersistentInfo, "FriendPersistentInfo")
 
@@ -341,7 +349,7 @@ class FriendPresence(common.Data):
 	def get_name(self):
 		return "FriendPresence"
 
-	def streamin(self, stream):
+	def streamout(self, stream):
 		self.unk_u32 = stream.u32()
 		self.nintendo_presence = stream.extract(NintendoPresenceV1)
 common.DataHolder.register(FriendPresence, "FriendPresence")
@@ -356,12 +364,13 @@ class FriendPicture:
 		return "FriendPicture"
 
 	def streamin(self, stream):
+		raise NotImplementedError("no")
+
+	def streamout(self, stream):
 		self.unk_u32 = data.u32()
 		self.data = data.buffer()
 		self.timestamp = data.datetime()
 
-	def streamout(self, stream):
-		raise NotImplementedError("no")
 
 common.DataHolder.register(FriendPicture, "FriendPicture")
 
@@ -397,12 +406,12 @@ class PlayedGame(common.Data):
 	def get_name(self):
 		return "PlayedGame"
 
-	def pack(self, stream):
+	def streamin(self, stream):
 		raise NotImplementedError("PlayedGame packing is unimplemented!")
 
-	def streamin(self, stream):
-		game_key = stream.extract(GameKey)
-		timestamp = stream.datetime()
+	def streamout(self, stream):
+		self.game_key = stream.extract(GameKey)
+		self.timestamp = stream.datetime()
 common.DataHolder.register(PlayedGame, "PlayedGame")
 
 class MyProfile(common.Data):
@@ -419,7 +428,7 @@ class MyProfile(common.Data):
 	def get_name(self):
 		return "MyProfile"
 
-	def streamin(self, stream):
+	def streamout(self, stream):
 		self.unk_u8_1 = stream.u8()
 		self.unk_u8_2 = stream.u8()
 		self.unk_u8_3 = stream.u8()

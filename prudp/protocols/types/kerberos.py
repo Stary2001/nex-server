@@ -16,6 +16,7 @@ class KerberosContainer():
 				key = hashlib.md5(key).digest()
 			self.key = key
 
+
 	def unpack(self, data):
 		ticket = data[:-0x10]
 		mac = data[-0x10:]
@@ -24,7 +25,6 @@ class KerberosContainer():
 		ticket_mac.update(ticket)
 		if ticket_mac.digest() != mac:
 			raise ValueError("Kerberos MAC is invalid!")
-
 		rc = RC4(self.key)
 		dec_ticket = rc.crypt(ticket)
 		return dec_ticket, len(data)

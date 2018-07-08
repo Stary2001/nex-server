@@ -4,6 +4,7 @@ from binascii import unhexlify
 import hmac
 import hashlib
 from rc4 import RC4
+import persistence
 
 class AuthenticationProtocol:
 	def __init__(self, server):
@@ -34,7 +35,7 @@ class AuthenticationProtocol:
 	@outgoing('u32', 'u32', 'buffer', 'string', 'list<u8>', 'string', 'string')
 	def login(self, user_pid):
 		user_pid_int = int(user_pid)
-		password = "|+GF-i):/7Z87_:q"
+		password = persistence.User.get(user_pid_int).password
 
 		secure_key = b'\x00' * self.server.secure_key_length
 		ticket_data = unhexlify('10000000dd732c4009de947224a4ae42adf9b1ca2c0000007049bd8fc0ebb192b25d7331a947b9fee49630d7139c6f975db245fb0c60aeabeb287fb5f89a6f51a02dade5')
@@ -51,7 +52,7 @@ class AuthenticationProtocol:
 	@outgoing('u32', 'u32', 'buffer', 'string', 'list<u8>', 'string', 'string')
 	def login_ex(self, user_pid, *a):
 		user_pid_int = int(user_pid)
-		password = "|+GF-i):/7Z87_:q"
+		password = persistence.User.get(user_pid).password
 
 		secure_key = b'\x00' * self.server.secure_key_length
 		ticket_data = unhexlify('06a5b76200e4046d8f1e52429b413ae34f1b0d7ad795b63ce4885f9e68e3b66fdee8d6d31e200b3141a743cf4c0be89b853138f0384e2ec5c56ac9d0')
@@ -71,7 +72,7 @@ class AuthenticationProtocol:
 		success = True
 		result = 0x00010001
 		
-		password = "|+GF-i):/7Z87_:q"
+		password = persistence.User.get(user_pid).password
 
 		secure_key = b'\x00' * self.server.secure_key_length
 		ticket_data = unhexlify('10000000c51dcdb821c418742e6200bc4bf638c02c0000009d3b93e2a51c978da884e1ae92c7ddae9ec2f148bb9d722d732c9ac3bef063ed3e0fe30d1f0f0792c9cc4410')

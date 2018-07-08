@@ -26,7 +26,7 @@ def incoming(*args):
 						cls = getattr(types, a)
 						funcs.append(lambda s, cls=cls: s.extract(cls))
 					except:
-						print("Failed to get type", a)
+						print("Failed to get type for in", a)
 						exit()
 		else:
 			funcs.append(lambda s, o: s.extract(o))
@@ -38,7 +38,6 @@ def incoming(*args):
 			real_args = []
 			stream = StreamIn(data)
 			for k in funcs:
-				print(k)
 				real_args.append(k(stream))
 			return f(self, *real_args)
 		return func
@@ -60,7 +59,15 @@ def outgoing(*args):
 
 				funcs.append(lambda s, o, f=f: s.list(o, f, params=[s]))
 			else:
-				funcs.append(getattr(StreamOut, a.lower()))
+				try:
+					funcs.append(getattr(StreamOut, a.lower()))
+				except:
+					try:
+						cls = getattr(types, a)
+						funcs.append(lambda s, cls=cls: s.extract(cls))
+					except:
+						print("Failed to get type for out", a)
+						exit()
 		else:
 			funcs.append(lambda s, o: o.pack(s))
 

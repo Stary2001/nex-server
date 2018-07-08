@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import asyncio
 from prudp import NEXAuthServer, NEXSecureServer
 import sys
