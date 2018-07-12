@@ -8,7 +8,7 @@ class MiiV1(common.Data):
 		self.data = data
 
 	def get_name(self):
-		return "MiiV1"
+		return "Mii"
 #TODO: pull in Mii from kinnay code
 	def streamin(self, stream):
 		stream.string(self.name)
@@ -44,7 +44,7 @@ class MiiV2(common.Data):
 		return s
 
 	def get_name(self):
-		return "MiiV2"
+		return "Mii"
 
 	def streamin(self, stream):
 		stream.string(self.name)
@@ -176,7 +176,7 @@ class NintendoPresenceV1(common.Data):
 		self.unk_buffer = unk_buffer
 
 	def get_name(self):
-		return "NintendoPresenceV1"
+		return "NintendoPresence"
 
 	def streamin(self, stream):
 		stream.u32(self.unk_u32_1)
@@ -223,7 +223,7 @@ class NintendoPresenceV2(common.Data):
 		self.unk12 = unk12
 
 	def get_name(self):
-		return "NintendoPresenceV2"
+		return "NintendoPresence"
 
 	def streamin(self, stream):
 		stream.u32(self.unk1)

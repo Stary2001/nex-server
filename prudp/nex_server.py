@@ -1,6 +1,7 @@
 import asyncio
 import struct
 import hashlib
+import random
 from binascii import hexlify
 
 from prudp.server import PRUDPClient
@@ -9,7 +10,16 @@ from prudp.protocols import protocol_list
 from prudp.events import Scheduler
 from rc4 import RC4
 
+from nintendo.nex.streams import StreamOut
+
 import traceback
+
+def build_nex_request(protocol, method, call_id, data):
+    req_header = struct.pack("<I", len(data) + 9)
+    req_header += struct.pack("B", protocol | 0x80)
+    req_header += struct.pack("<I", call_id)
+    req_header += struct.pack("<I", method)
+    return req_header + data
 
 class NEXClient(PRUDPClient):
     STATE_EXPECT_SYN = 0
@@ -113,6 +123,21 @@ class NEXClient(PRUDPClient):
                 else:
                     pass
                     # Response?
+
+    def send_notification(self, notif_type, pid, payload):
+        #todo: pack Data properly!
+        stream = StreamOut()
+        stream.u32(notif_type)
+        stream.u32(pid)
+        payload_stream = StreamOut()
+        payload.streamin(payload_stream)
+        stream.string(payload.get_name())
+        stream.u32(len(payload_stream.data) + 4)
+        stream.buffer(payload_stream.data)
+
+        packet = build_nex_request(0x64, 0x01, random.randint(0, 0xffffffff), stream.data)
+        print(packet.hex())
+        self.send_data(packet)
 
 class NEXServerBase(asyncio.DatagramProtocol):
     def __init__(self, access_key, sig_version, server_ip=None, secure_port=None, secure_key=None, secure_key_length=None):

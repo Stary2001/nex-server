@@ -119,11 +119,17 @@ class Friends3DSProtocol:
 
     @incoming("NintendoPresenceV1", "bool")
     def update_presence(self, presence, unk_bool):
-        print("Update presence!", presence)
         # TODO: Save it? Not really needed. Sorta.
         self.client.user.presence = presence
-        print(self.client.user, persistence.User.get(self.client.user.pid))
         print("update_presence:", "{:016x}".format(presence.game_key.title_id), unk_bool)
+
+        friends = persistence.User.get_friend_pids(self.client.user.pid)
+        for client_ip in self.server.connections:
+            client = self.server.connections[client_ip]
+            if hasattr(client, 'user'):
+                if client.user.pid in friends:
+                    client.send_notification(1, self.client.user.pid, presence)
+
         return (True, 0x00010001, None)
 
     @incoming("GameKey")
@@ -147,10 +153,8 @@ class Friends3DSProtocol:
         infos = []
         for pid in principal_ids:
             p = persistence.User.get(pid).get_presence()
-            print(pid, p)
             if p != None:
                 infos.append(p)
-        print(infos)
         return (True, 0x00010001, (infos,))
 
     @incoming("list<u32>")
@@ -165,7 +169,5 @@ class Friends3DSProtocol:
         infos = []
         for pid in principal_ids:
             i = persistence.User.get(pid).get_friend_persistent_info()
-            print(i.status, i.game_key.title_id)
             infos.append(i)
-        print(infos)
         return (True, 0x00010001, (infos,))

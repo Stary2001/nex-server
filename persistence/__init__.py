@@ -38,11 +38,11 @@ class User:
 		return u
 
 	@staticmethod
-	def get_friends(pid):
+	def get_friend_pids(pid):
 		global _db_cursor
-		rows = _db_cursor.execute("select * from friends where our_pid=? or other_pid=? and confirmed=1", (pid, pid)).fetchall()
+		rows = _db_cursor.execute("select other_pid from friends where our_pid=?", (pid,)).fetchall()
 		print(rows)
-		return rows
+		return list(map(lambda a: a[0], rows))
 
 	def add_friend(self, our_lfcs, other_pid):
 		global _db_cursor, _db_conn

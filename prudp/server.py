@@ -59,7 +59,7 @@ class PRUDPClient:
                 packet_out.dest = 0xaf
                 packet_out.op = PRUDPV0Packet.OP_SYN
                 packet_out.flags = PRUDPV0Packet.FLAG_ACK | PRUDPV0Packet.FLAG_HAS_SIZE
-                packet_out.session = packet.session
+                packet_out.session = self.session
                 packet_out.seq = packet.seq
                 packet_out.data_size = 0
                 p = packet_out.encode(self.rc4_state_encrypt)
@@ -97,7 +97,7 @@ class PRUDPClient:
                 packet_out.dest = 0xaf
                 packet_out.op = PRUDPV0Packet.OP_CONNECT
                 packet_out.flags = PRUDPV0Packet.FLAG_ACK | PRUDPV0Packet.FLAG_HAS_SIZE
-                packet_out.session = packet.session
+                packet_out.session = self.session
                 packet_out.seq = packet.seq
                 if packet.data != b'':
                     s = StreamOut()
@@ -125,7 +125,7 @@ class PRUDPClient:
                 packet_out.dest = 0xaf
                 packet_out.op = PRUDPV0Packet.OP_DATA
                 packet_out.flags = PRUDPV0Packet.FLAG_ACK
-                packet_out.session = packet.session
+                packet_out.session = self.session
                 packet_out.seq = packet.seq
                 packet_out.fragment = 0
                 packet_out.data_size = 0
@@ -139,7 +139,7 @@ class PRUDPClient:
                 packet_out.dest = 0xaf
                 packet_out.op = PRUDPV0Packet.OP_HEARTBEAT
                 packet_out.flags = PRUDPV0Packet.FLAG_ACK
-                packet_out.session = packet.session
+                packet_out.session = self.session
                 packet_out.seq = packet.seq
                 packet_out.fragment = 0
                 packet_out.data_size = 0
@@ -151,7 +151,7 @@ class PRUDPClient:
                 packet_out.dest = 0xaf
                 packet_out.op = PRUDPV0Packet.OP_DISCONNECT
                 packet_out.flags = PRUDPV0Packet.FLAG_ACK
-                packet_out.session = packet.session
+                packet_out.session = self.session
                 packet_out.seq = packet.seq
                 packet_out.fragment = 0
                 packet_out.data_size = 0
@@ -174,6 +174,22 @@ class PRUDPClient:
         print("Unhandled packet??")
         print(packet)
         return False
+
+    def send_data(self, data):
+        packet_out = PRUDPV0PacketOut(client=self)
+        packet_out.source = 0xa1
+        packet_out.dest = 0xaf
+        packet_out.op = PRUDPV0Packet.OP_DATA
+        packet_out.flags = PRUDPV0Packet.FLAG_NEEDS_ACK | PRUDPV0Packet.FLAG_RELIABLE | PRUDPV0Packet.FLAG_HAS_SIZE
+        packet_out.session = self.session
+        packet_out.seq = self.last_seq
+        self.last_seq += 1
+        packet_out.fragment = 0
+        packet_out.data_size = len(data)
+        packet_out.data = data
+
+        self.send_packet(packet_out)
+
 
     """def handle_heartbeat(self, ev):
         print("Sending heartbeat {}!", self.last_seq)
