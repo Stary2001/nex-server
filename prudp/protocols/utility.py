@@ -3,10 +3,12 @@ import struct
 from binascii import unhexlify
 
 class UtilityProtocol:
-    def __init__(self, server):
+    def __init__(self, client):
+        self.client = client
+        self.server = client.server
+
         self.methods = {}
         self.methods[0x05] = self.GetAssociatedNexUniqueIdWithMyPrincipalId
-        self.server = server
 
     @incoming("u32", "u32")
     @outgoing("u64", "u64")

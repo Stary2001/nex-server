@@ -48,7 +48,7 @@ class NEXClient(PRUDPClient):
                     if proto_id in self.cached_protos:
                         proto = self.cached_protos[proto_id]
                     else:
-                        proto = protocol_list[proto_id](self.server)
+                        proto = protocol_list[proto_id](self)
                         self.cached_protos[proto_id] = proto
 
                 if proto_with_flag & 0x80:

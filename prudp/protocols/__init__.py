@@ -52,7 +52,7 @@ def outgoing(*args):
 					f = getattr(StreamOut, a[5:-1])
 				except:
 					try:
-						f = getattr(types, a[5:-1]).streamout
+						f = getattr(types, a[5:-1]).streamin
 					except:
 						print("Failed to get type", a)
 						exit()
@@ -62,12 +62,7 @@ def outgoing(*args):
 				try:
 					funcs.append(getattr(StreamOut, a.lower()))
 				except:
-					try:
-						cls = getattr(types, a)
-						funcs.append(lambda s, cls=cls: s.extract(cls))
-					except:
-						print("Failed to get type for out", a)
-						exit()
+					funcs.append(lambda s, o: o.streamin(s))
 		else:
 			funcs.append(lambda s, o: o.pack(s))
 

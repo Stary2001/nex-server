@@ -33,6 +33,16 @@ class MiiV2(common.Data):
 		self.data = data
 		self.datetime = datetime
 
+	@staticmethod
+	def from_miiv1(mii):
+		s = MiiV2.__new__(MiiV2) # Bypass __init__!!!!
+		s.name = mii.name
+		s.unk1 = mii.unk1
+		s.unk2 = mii.unk2
+		s.data = mii.data
+		s.datetime = DateTime(0)
+		return s
+
 	def get_name(self):
 		return "MiiV2"
 
@@ -40,16 +50,35 @@ class MiiV2(common.Data):
 		stream.string(self.name)
 		stream.u8(self.unk1)
 		stream.u8(self.unk2)
-		stream.buffer(self.data.build())
+		stream.buffer(self.data)
+		#stream.buffer(self.data.build())
 		stream.datetime(self.datetime)
 
 	def streamout(self, stream):
 		self.name = stream.string()
 		self.unk1 = stream.u8()
 		self.unk2 = stream.u8()
-		self.data = miis.MiiData.parse(stream.buffer())
+		self.data = stream.buffer()
+		#self.data = miis.MiiData.parse(stream.buffer())
 		self.datetime = stream.datetime()
 common.DataHolder.register(MiiV2, "MiiV2")
+
+class FriendMii(common.Data):
+	def __init__(self, pid, mii):
+		self.pid = pid
+		self.mii = mii
+
+	def get_name(self):
+		return "FriendMii"
+#TODO: pull in Mii from kinnay code
+	def streamin(self, stream):
+		stream.u32(self.pid)
+		self.mii.streamin(stream)
+
+	def streamout(self, stream):
+		self.pid = stream.u32()
+		self.mii = stream.extract("MiiV2")
+common.DataHolder.register(FriendMii, "FriendMii")
 
 class MiiList(common.Data):
 	def __init__(self, name, unk1, unk2, mii_data_list):
@@ -148,6 +177,18 @@ class NintendoPresenceV1(common.Data):
 
 	def get_name(self):
 		return "NintendoPresenceV1"
+
+	def streamin(self, stream):
+		stream.u32(self.unk_u32_1)
+		self.game_key.streamin(stream)
+		stream.string(self.message)
+		stream.u32(self.unk_u32_2)
+		stream.u8(self.unk_u8)
+		stream.u32(self.unk_u32_3)
+		stream.u32(self.unk_u32_4)
+		stream.u32(self.unk_u32_5)
+		stream.u32(self.unk_u32_6)
+		stream.buffer(self.unk_buffer)
 
 	def streamout(self, stream):
 		self.unk_u32_1 = stream.u32()
@@ -307,7 +348,7 @@ class FriendRelationship(common.Data):
 common.DataHolder.register(FriendRelationship, "FriendRelationship")
 
 class FriendPersistentInfo():
-	def __init__(self, unk_u32, unk_u8_1, unk_u8_2, unk_u8_3, unk_u8_4, unk_u8_5, game_key, unk_string, unk_timestamp_1, unk_timestamp_2, unk_timestamp_3):
+	def __init__(self, unk_u32, unk_u8_1, unk_u8_2, unk_u8_3, unk_u8_4, unk_u8_5, game_key, status, unk_timestamp_1, unk_timestamp_2, unk_timestamp_3):
 		self.unk_u32 = unk_u32
 		self.unk_u8_1 = unk_u8_1
 		self.unk_u8_2 = unk_u8_2
@@ -315,7 +356,7 @@ class FriendPersistentInfo():
 		self.unk_u8_4 = unk_u8_4
 		self.unk_u8_5 = unk_u8_5
 		self.game_key = game_key
-		self.unk_string = unk_string
+		self.status = status
 		self.unk_timestamp_1 = unk_timestamp_1
 		self.unk_timestamp_2 = unk_timestamp_2
 		self.unk_timestamp_3 = unk_timestamp_3
@@ -332,25 +373,40 @@ class FriendPersistentInfo():
 		self.unk_u8_5 = stream.u8()
 
 		self.game_key = stream.extract(GameKey)
-		self.unk_string = stream.string()
+		self.status = stream.string()
 		self.unk_timestamp_1 = stream.datetime()
 		self.unk_timestamp_2 = stream.datetime()
 		self.unk_timestamp_3 = stream.datetime()
 
 	def streamin(self, stream):
-		raise NotImplementedError("no")
+		stream.u32(self.unk_u32)
+		stream.u8(self.unk_u8_1)
+		stream.u8(self.unk_u8_2)
+		stream.u8(self.unk_u8_3)
+		stream.u8(self.unk_u8_4)
+		stream.u8(self.unk_u8_5)
+		self.game_key.streamin(stream)
+		stream.string(self.status)
+		stream.datetime(self.unk_timestamp_1)
+		stream.datetime(self.unk_timestamp_2)
+		stream.datetime(self.unk_timestamp_3)
+
 common.DataHolder.register(FriendPersistentInfo, "FriendPersistentInfo")
 
 class FriendPresence(common.Data):
-	def __init__(self, unk_u32, nintendo_presence):
-		self.unk_u32 = unk_u32
+	def __init__(self, pid, nintendo_presence):
+		self.pid = pid
 		self.nintendo_presence = nintendo_presence
 
 	def get_name(self):
 		return "FriendPresence"
 
+	def streamin(self, stream):
+		stream.u32(self.pid)
+		self.nintendo_presence.streamin(stream)
+
 	def streamout(self, stream):
-		self.unk_u32 = stream.u32()
+		self.pid = stream.u32()
 		self.nintendo_presence = stream.extract(NintendoPresenceV1)
 common.DataHolder.register(FriendPresence, "FriendPresence")
 

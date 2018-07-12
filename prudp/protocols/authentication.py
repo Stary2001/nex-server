@@ -7,8 +7,9 @@ from rc4 import RC4
 import persistence
 
 class AuthenticationProtocol:
-	def __init__(self, server):
-		self.server = server
+	def __init__(self, client):
+		self.client = client
+		self.server = client.server
 
 		self.methods = {}
 		self.methods[1] = self.login
@@ -37,6 +38,8 @@ class AuthenticationProtocol:
 		user_pid_int = int(user_pid)
 		password = persistence.User.get(user_pid_int).password
 
+		self.client.user = persistence.User.get(user_pid_int)
+
 		secure_key = b'\x00' * self.server.secure_key_length
 		ticket_data = unhexlify('10000000dd732c4009de947224a4ae42adf9b1ca2c0000007049bd8fc0ebb192b25d7331a947b9fee49630d7139c6f975db245fb0c60aeabeb287fb5f89a6f51a02dade5')
 		ticket = self.build_ticket(user_pid=user_pid_int, user_password=password, ticket_data=ticket_data, secure_key=secure_key)
@@ -53,6 +56,8 @@ class AuthenticationProtocol:
 	def login_ex(self, user_pid, *a):
 		user_pid_int = int(user_pid)
 		password = persistence.User.get(user_pid).password
+
+		self.client.user = persistence.User.get(user_pid_int)
 
 		secure_key = b'\x00' * self.server.secure_key_length
 		ticket_data = unhexlify('06a5b76200e4046d8f1e52429b413ae34f1b0d7ad795b63ce4885f9e68e3b66fdee8d6d31e200b3141a743cf4c0be89b853138f0384e2ec5c56ac9d0')
