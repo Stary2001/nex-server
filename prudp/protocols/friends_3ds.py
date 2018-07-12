@@ -26,7 +26,7 @@ class Friends3DSProtocol:
         # 0x0b
         # 0x0c
         # 0x0d
-        self.methods[0x0e] = self.delete_friend
+        self.methods[0x0e] = self.remove_friend
         # 0x10
         self.methods[0x11] = self.sync_friend
         self.methods[0x12] = self.update_presence
@@ -98,7 +98,8 @@ class Friends3DSProtocol:
 
     # Delete friend?
     @incoming("u32")
-    def delete_friend(self, principal_id):
+    def remove_friend(self, principal_id):
+        self.client.user.remove_friend(principal_id)
         return (True, 0x00010001, None)
 
     @outgoing("list<FriendRelationship>")

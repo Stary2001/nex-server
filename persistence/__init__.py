@@ -63,7 +63,20 @@ class User:
 				row = _db_cursor.execute("select our_pid, our_lfcs, confirmed from friends where our_pid=? and other_pid=?", (other_pid, self.pid)).fetchone()
 				return FriendRelationship(row[0], int(row[1]), row[2])
 
+	def remove_friend(self, other_pid):
+		global _db_cursor, _db_conn
+		# If there is a completed friend relationship (flag=1), un-complete it.
+		completed_relationship = _db_cursor.execute("select * from friends where our_pid=? and other_pid=? and confirmed=1", (self.pid, other_pid)).fetchone()
+		if completed_relationship != None:
+			# Reset the _other_ side of the relationship.
+			_db_cursor.execute("update friends set confirmed=0 where our_pid=? and other_pid=?", (other_pid, self.pid))
+			_db_conn.commit()
+		# Delete!
+		_db_cursor.execute("delete from friends where our_pid=? and other_pid=?", (self.pid, other_pid))
+		_db_conn.commit()
+
 	def get_friend_relationships(self, filter=None):
+		global _db_cursor, _db_conn
 		if filter != None:
 			filter_str = f'({",".join(map(str,filter))})'
 			all_friends = _db_cursor.execute(f"select our_pid, our_lfcs, confirmed from friends where our_pid in {filter_str} and other_pid=?", (self.pid,)).fetchall()
