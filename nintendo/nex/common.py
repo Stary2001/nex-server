@@ -1,4 +1,4 @@
-
+import datetime
 from nintendo.nex import streams
 
 import logging
@@ -151,3 +151,8 @@ class DateTime:
 	@classmethod
 	def make(cls, day, month, year, hour, minute, second):
 		return cls(second | (minute << 6) | (hour << 12) | (day << 17) | (month << 22) | (year << 26))
+
+	@classmethod
+	def utcnow(cls):
+		d = datetime.datetime.utcnow()
+		return cls.make(d.day, d.month, d.year, d.hour, d.minute, d.second)

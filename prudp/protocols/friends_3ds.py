@@ -5,6 +5,8 @@ import hmac
 import hashlib
 from rc4 import RC4
 import persistence
+from prudp.protocols.types import NintendoNotificationEventGeneral, MiiV2
+from nintendo.nex.common import DateTime
 
 class Friends3DSProtocol:
     def __init__(self, client):
@@ -48,6 +50,8 @@ class Friends3DSProtocol:
     def update_mii(self, mii):
         # TODO: Save it or something?
         self.client.user.mii = MiiV2.from_miiv1(mii)
+        self.broadcast_notification(5, NintendoNotificationEventGeneral(0,0,0,DateTime.utcnow(),''))
+
         return (True, 0x00010001, None)
 
     @incoming("MiiList") # Not List<Mii>!
@@ -85,14 +89,17 @@ class Friends3DSProtocol:
     @incoming("u64", "u32")
     @outgoing("FriendRelationship")
     def add_friend_by_principal_id(self, mostly_lfcs, principal_id):
-        print("add friend by principal id:", mostly_lfcs, principal_id)
         relationship = self.client.user.add_friend(mostly_lfcs, principal_id)
+        if relationship.is_complete == True:
+            # ok, relationship complete
+            # send a notif to the other side
+            self.send_notification(principal_id, 7, NintendoNotificationEventGeneral(0,0,0,DateTime.utcnow(),''))
+
         return (True, 0x00010001, (relationship,))
 
     @incoming("u64")
     @outgoing("u32")
     def get_principal_id_by_friend_code(self, friend_code):
-        print("get principal id by friend code:", friend_code)
         pid = 0
         return (True, 0x00010001, (pid,))
 
@@ -110,7 +117,6 @@ class Friends3DSProtocol:
     @incoming("u64", "list<u32>", "list<u64>")
     @outgoing("list<FriendRelationship>")
     def sync_friend(self, mostly_lfcs, principal_ids, unknown):
-        print("SyncFriend: {:016x}".format(mostly_lfcs), principal_ids, unknown)
         if len(principal_ids) == 0:
             relationships = []
         else:
@@ -121,29 +127,20 @@ class Friends3DSProtocol:
     def update_presence(self, presence, unk_bool):
         # TODO: Save it? Not really needed. Sorta.
         self.client.user.presence = presence
-        print("update_presence:", "{:016x}".format(presence.game_key.title_id), unk_bool)
-
-        friends = persistence.User.get_friend_pids(self.client.user.pid)
-        for client_ip in self.server.connections:
-            client = self.server.connections[client_ip]
-            if hasattr(client, 'user'):
-                if client.user.pid in friends:
-                    client.send_notification(1, self.client.user.pid, presence)
-
+        self.broadcast_notification(1, presence)
         return (True, 0x00010001, None)
 
     @incoming("GameKey")
     def update_favorite_game_key(self, game_key):
         # TODO: Save it!
         self.client.user.persistent_info.game_key = game_key
-        print("update_favorite_game_key:", game_key)
         return (True, 0x00010001, None)
 
     @incoming("string")
     def update_comment(self, comment):
         # TODO: Save it!
         self.client.user.persistent_info.status = comment
-        print("update_comment:", comment)
+        self.broadcast_notification(3, NintendoNotificationEventGeneral(0,0,0,DateTime.utcnow(),comment))
         return (True, 0x00010001, None)
 
     @incoming("list<u32>")
@@ -171,3 +168,25 @@ class Friends3DSProtocol:
             i = persistence.User.get(pid).get_friend_persistent_info()
             infos.append(i)
         return (True, 0x00010001, (infos,))
+
+    def broadcast_notification(self, notif_type, payload):
+        print("Broadcasting type {}, payload = {}".format(notif_type, payload))
+        friends = persistence.User.get_friend_pids(self.client.user.pid)
+        for client_ip in self.server.connections:
+            client = self.server.connections[client_ip]
+            if hasattr(client, 'user'):
+                if client.user.pid in friends:
+                    client.send_notification(notif_type, self.client.user.pid, payload)
+
+    def send_notification(self, remote_pid, notif_type, payload):
+        print("Sending type {} to pid {}, payload = {}".format(notif_type, remote_pid, payload))
+        for client_ip in self.server.connections:
+            client = self.server.connections[client_ip]
+            if hasattr(client, 'user'):
+                if client.user.pid == remote_pid:
+                    client.send_notification(notif_type, self.client.user.pid, payload)
+                    break
+                else:
+                    # TODO: queue notifications if the target isn't online!
+                    # For now, drop them into the void.
+                    print("Queueing notifs when?????")

@@ -1,4 +1,5 @@
 import nintendo.nex.common as common
+from nintendo.nex.common import DateTime
 
 class MiiV1(common.Data):
 	def __init__(self, name, unk1, unk2, data):
@@ -494,3 +495,29 @@ class MyProfile(common.Data):
 		self.unk_string_1 = stream.string()
 		self.unk_string_2 = stream.string()
 common.DataHolder.register(MyProfile, "MyProfile")
+
+class NintendoNotificationEventGeneral(common.Data):
+	def __init__(self, a, b, c, timestamp, status):
+		self.unk_u32_1 = a
+		self.unk_u32_2 = b
+		self.unk_u32_3 = c
+		self.timestamp = timestamp
+		self.status = status
+
+	def get_name(self):
+		return "NintendoNotificationEventGeneral"
+
+	def streamin(self, stream):
+		stream.u32(self.unk_u32_1)
+		stream.u32(self.unk_u32_2)
+		stream.u32(self.unk_u32_3)
+		stream.datetime(self.timestamp)
+		stream.string(self.status)
+
+	def streamout(self, stream):
+		self.unk_u32_1 = stream.u32()
+		self.unk_u32_2 = stream.u32()
+		self.unk_u32_3 = stream.u32()
+		self.timestamp = stream.datetime()
+		self.status = stream.string()
+common.DataHolder.register(NintendoNotificationEventGeneral, "NintendoNotificationEventGeneral")

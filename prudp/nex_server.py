@@ -136,7 +136,6 @@ class NEXClient(PRUDPClient):
         stream.buffer(payload_stream.data)
 
         packet = build_nex_request(0x64, 0x01, random.randint(0, 0xffffffff), stream.data)
-        print(packet.hex())
         self.send_data(packet)
 
 class NEXServerBase(asyncio.DatagramProtocol):
