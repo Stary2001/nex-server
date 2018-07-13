@@ -36,6 +36,7 @@ class PRUDPClient:
         # self.heartbeat_event = None
         self.timeout_event = Event(self.handle_timeout, timeout=30)
         self.server.scheduler.add(self.timeout_event)
+        self.connected = False
 
     def decode_packet(self, data):
         return PRUDPV0Packet.decode(data, self.rc4_state_decrypt)
@@ -51,6 +52,7 @@ class PRUDPClient:
         if self.state == PRUDPClient.STATE_EXPECT_SYN:
             if packet.op == PRUDPV0Packet.OP_SYN: # SYN
                 self.session = packet.session
+                self.connected = True
 
                 self.state = PRUDPClient.STATE_EXPECT_CONNECT
 
@@ -146,22 +148,24 @@ class PRUDPClient:
                 self.send_packet(packet_out)
                 return True
             elif packet.op == PRUDPV0Packet.OP_DISCONNECT:
-                packet_out = PRUDPV0PacketOut(client=self)
-                packet_out.source = 0xa1
-                packet_out.dest = 0xaf
-                packet_out.op = PRUDPV0Packet.OP_DISCONNECT
-                packet_out.flags = PRUDPV0Packet.FLAG_ACK
-                packet_out.session = self.session
-                packet_out.seq = packet.seq
-                packet_out.fragment = 0
-                packet_out.data_size = 0
+                if packet.flags & PRUDPV0Packet.FLAG_ACK == 0:
+                    packet_out = PRUDPV0PacketOut(client=self)
+                    packet_out.source = 0xa1
+                    packet_out.dest = 0xaf
+                    packet_out.op = PRUDPV0Packet.OP_DISCONNECT
+                    packet_out.flags = PRUDPV0Packet.FLAG_ACK
+                    packet_out.session = self.session
+                    packet_out.seq = packet.seq
+                    packet_out.fragment = 0
+                    packet_out.data_size = 0
 
-                self.send_packet(packet_out)
-                self.send_packet(packet_out)
-                self.send_packet(packet_out)
+                    self.send_packet(packet_out)
+                    self.send_packet(packet_out)
+                    self.send_packet(packet_out)
 
                 del self.server.connections[self.client_addr]
                 self.remove_events()
+                self.connected = False
 
                 return True
             elif packet.flags & PRUDPV0Packet.FLAG_ACK != 0:
@@ -240,3 +244,18 @@ class PRUDPClient:
 
         for ev in self.ack_events:
             self.server.scheduler.remove(self.ack_events[ev])
+
+    def disconnect(self):
+        if self.connected:
+            pass
+        # Nintendo doesn't seem to honour DISCONNECTs sent from the server - it ACKs them, but never actually disconnects :(
+            """packet_out = PRUDPV0PacketOut(client=self)
+            packet_out.source = 0xa1
+            packet_out.dest = 0xaf
+            packet_out.op = PRUDPV0Packet.OP_DISCONNECT
+            packet_out.flags = PRUDPV0Packet.FLAG_NEEDS_ACK | PRUDPV0Packet.FLAG_RELIABLE
+            packet_out.session = self.session
+            packet_out.seq = self.last_seq
+            self.last_seq += 1
+            self.send_packet(packet_out)
+            print("sending disconnect to ", self)"""

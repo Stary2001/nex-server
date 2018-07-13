@@ -34,7 +34,7 @@ class PRUDPV0Packet:
 
         if self.conn_sig != None:
             s += ", conn_sig={:08x}".format(struct.unpack("<I", self.conn_sig)[0])
-        else:
+        elif self.fragment != None:
             s += ", fragment={:02x}".format(self.fragment)
 
         if self.data_size != None:
@@ -72,9 +72,11 @@ class PRUDPV0Packet:
         if op == PRUDPV0Packet.OP_SYN or op == PRUDPV0Packet.OP_CONNECT:
             header_size = 15
             conn_sig = data[11:15]
-        else:
+        elif op == PRUDPV0Packet.OP_DATA:
             header_size = 12
             fragment = data[11]
+        else:
+            header_size = 11
 
         if flags & PRUDPV0Packet.FLAG_HAS_SIZE != 0:
             data_size = struct.unpack("<H", data[header_size:header_size+2])[0]
@@ -151,7 +153,7 @@ class PRUDPV0Packet:
 
         if self.op == PRUDPV0Packet.OP_SYN or self.op == PRUDPV0Packet.OP_CONNECT:
             data += self.conn_sig
-        else:
+        elif self.op == PRUDPV0Packet.OP_DATA:
             data += struct.pack("<B", self.fragment)
 
         if self.flags & PRUDPV0Packet.FLAG_HAS_SIZE != 0:

@@ -103,7 +103,6 @@ class Friends3DSProtocol:
         pid = 0
         return (True, 0x00010001, (pid,))
 
-    # Delete friend?
     @incoming("u32")
     def remove_friend(self, principal_id):
         self.client.user.remove_friend(principal_id)

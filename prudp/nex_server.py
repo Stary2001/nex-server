@@ -7,7 +7,7 @@ from binascii import hexlify
 from prudp.server import PRUDPClient
 from prudp.v0packet import PRUDPV0Packet, PRUDPV0PacketOut
 from prudp.protocols import protocol_list
-from prudp.events import Scheduler
+from prudp.events import Scheduler, Event
 from rc4 import RC4
 
 from nintendo.nex.streams import StreamOut
@@ -138,6 +138,14 @@ class NEXClient(PRUDPClient):
         packet = build_nex_request(0x64, 0x01, random.randint(0, 0xffffffff), stream.data)
         self.send_data(packet)
 
+def disconnect_all(ev, server):
+    for ip in server.connections:
+        server.connections[ip].disconnect()
+
+def stop_all(ev, server):
+    server.scheduler.stop()
+    server.transport.close()
+
 class NEXServerBase(asyncio.DatagramProtocol):
     def __init__(self, access_key, sig_version, server_ip=None, secure_port=None, secure_key=None, secure_key_length=None):
         super().__init__()
@@ -154,10 +162,24 @@ class NEXServerBase(asyncio.DatagramProtocol):
 
         self.connections = {}
         self.scheduler = Scheduler()
-        asyncio.ensure_future(self.scheduler.go())
+        self.scheduler.go_task = asyncio.ensure_future(self.scheduler.go())
 
         self.data_sig_key = hashlib.md5(self.access_key).digest()
         self.checksum_base = sum(self.access_key)
+
+    def schedule_stop(self):
+        if len(self.connections) > 0:
+            disconnect_1_event = Event(disconnect_all, 0.5, params=(self,))
+            disconnect_2_event = Event(disconnect_all, 1, params=(self,))
+            disconnect_3_event = Event(disconnect_all, 1.5, params=(self,))
+            stop_scheduler_and_server = Event(stop_all, 2, params=(self,))
+            self.scheduler.add(disconnect_1_event)
+            self.scheduler.add(disconnect_2_event)
+            self.scheduler.add(disconnect_3_event)
+            self.scheduler.add(stop_scheduler_and_server)
+        else:
+            stop_scheduler_and_server = Event(stop_all, 0, params=(self,))
+            self.scheduler.add(stop_scheduler_and_server)
 
     def connection_made(self, transport):
         self.transport = transport

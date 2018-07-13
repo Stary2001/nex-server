@@ -23,7 +23,7 @@ class Scheduler:
 		self.events = []
 
 	def add(self, ev):
-		ev.scheudler = self
+		ev.scheduler = self
 		self.events.append(ev)
 
 	def remove(self, ev):
