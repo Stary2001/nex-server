@@ -11,21 +11,22 @@ from prudp.events import Event
 from nintendo.nex.streams import StreamOut
 import persistence
 
-class PRUDPClient:
+class PRUDPV0Transport:
     STATE_EXPECT_SYN = 0
     STATE_EXPECT_CONNECT = 1
     STATE_CONNECTED = 2
 
-    def __init__(self, rc4_key, server, client_addr):
+    def __init__(self, rc4_key, server, nex_client, client_addr):
         self.key = rc4_key
         self.rc4_state_encrypt = RC4(rc4_key, reset=False)
         self.rc4_state_decrypt = RC4(rc4_key, reset=False)
 
         self.last_seq = 1
-        self.state = PRUDPClient.STATE_EXPECT_SYN
+        self.state = PRUDPV0Transport.STATE_EXPECT_SYN
         self.last_sig = None
 
         self.server = server
+        self.nex_client = nex_client
         self.client_addr = client_addr
 
         self.client_signature = None
@@ -50,12 +51,12 @@ class PRUDPClient:
         #    self.heartbeat_event.reset()
         self.timeout_event.reset()
 
-        if self.state == PRUDPClient.STATE_EXPECT_SYN:
+        if self.state == PRUDPV0Transport.STATE_EXPECT_SYN:
             if packet.op == PRUDPV0Packet.OP_SYN: # SYN
                 self.session = packet.session
                 self.connected = True
 
-                self.state = PRUDPClient.STATE_EXPECT_CONNECT
+                self.state = PRUDPV0Transport.STATE_EXPECT_CONNECT
 
                 packet_out = PRUDPV0PacketOut(client=self)
                 packet_out.source = 0xa1
@@ -72,10 +73,10 @@ class PRUDPClient:
                 #print("Got a non-SYN in EXPECT_SYN")
                 # return err
                 pass
-        elif self.state == PRUDPClient.STATE_EXPECT_CONNECT:
+        elif self.state == PRUDPV0Transport.STATE_EXPECT_CONNECT:
             if packet.op == PRUDPV0Packet.OP_CONNECT:
                 self.client_signature = packet.conn_sig
-                self.state = PRUDPClient.STATE_CONNECTED
+                self.state = PRUDPV0Transport.STATE_CONNECTED
 
                 """self.heartbeat_event = Event(self.handle_heartbeat, timeout=5, repeat=True)
                 self.server.scheduler.add(self.heartbeat_event)
@@ -99,7 +100,7 @@ class PRUDPClient:
 
                 # We know our PID now, get the user ready.
                 print(pid)
-                self.user = persistence.User.get(pid)
+                self.nex_client.user = persistence.User.get(pid)
 
                 packet_out = PRUDPV0PacketOut(client=self)
                 packet_out.source = 0xa1
@@ -124,10 +125,12 @@ class PRUDPClient:
                 #print("Got a non-CONNECT in EXPECT_CONNECT")
                 # return err
                 pass
-        elif self.state == PRUDPClient.STATE_CONNECTED:
+        elif self.state == PRUDPV0Transport.STATE_CONNECTED:
             if packet.op == PRUDPV0Packet.OP_DATA and packet.flags & PRUDPV0Packet.FLAG_ACK == 0:
                 # Ack it.
                 # TODO: Fragment reassembly here, if required.
+
+                res = self.nex_client.handle_nex_payload(packet.data)
 
                 packet_out = PRUDPV0PacketOut(client=self)
                 packet_out.source = 0xa1
@@ -140,7 +143,7 @@ class PRUDPClient:
                 packet_out.data_size = 0
 
                 self.send_packet(packet_out)
-                return False # Please handle this further.
+                return res
             elif packet.op == PRUDPV0Packet.OP_HEARTBEAT:
                 # Ack it.
                 packet_out = PRUDPV0PacketOut(client=self)
@@ -200,7 +203,6 @@ class PRUDPClient:
         packet_out.data = data
 
         self.send_packet(packet_out)
-
 
     """def handle_heartbeat(self, ev):
         print("Sending heartbeat {}!", self.last_seq)
