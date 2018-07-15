@@ -2,7 +2,6 @@ from prudp.protocols import incoming,outgoing
 from nintendo.nex.streams import StreamIn
 import struct
 from binascii import unhexlify
-import persistence
 import base64
 
 def nintendo_base64_encode(data):
@@ -46,9 +45,9 @@ class SecureConnectionProtocol:
 		s.u32()
 		token = s.string()
 		token = nintendo_base64_decode(token)
-		token_stream = StreamIn(token)
-		pid = int(token_stream.string())
-		print(pid)
-		self.client.user = persistence.User.get(pid)
+		#token_stream = StreamIn(token)
+		#pid = int(token_stream.string())
+		#print(pid)
+		#self.client.user = persistence.User.get(pid)
 		url = ""
 		return (success, result, (result, pid_conn_id, url))

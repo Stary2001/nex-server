@@ -35,6 +35,6 @@ except KeyboardInterrupt:
             final_tasks.append(server.scheduler.go_task)
         loop.run_until_complete(asyncio.gather(*final_tasks))
     except KeyboardInterrupt:
-        print(loop)
-        print(asyncio.Task.all_tasks())
+        #print(loop)
+        #print(asyncio.Task.all_tasks())
         print("\nREALLY got ctrlc! Quitting.")

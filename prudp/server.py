@@ -9,6 +9,7 @@ from prudp.protocols import incoming
 from prudp.protocols.types.kerberos import KerberosContainer
 from prudp.events import Event
 from nintendo.nex.streams import StreamOut
+import persistence
 
 class PRUDPClient:
     STATE_EXPECT_SYN = 0
@@ -80,19 +81,25 @@ class PRUDPClient:
                 self.server.scheduler.add(self.heartbeat_event)
                 print("heartbeat event?")"""
 
+                pid = 0
                 check = 0
                 # TODO: eww, hack
                 if packet.data != b'':
                     @incoming('buffer', 'buffer')
                     def parse_connect(fself, a, b):
+                        nonlocal pid
                         nonlocal check
                         k2, k2_len = KerberosContainer(key=self.key).unpack(b)
 
-                        pid = k2[0:4]
-                        cid = k2[4:8]
+                        pid = int.from_bytes(k2[0:4], 'little')
+                        cid = int.from_bytes(k2[4:8], 'little')
                         check = struct.unpack("<I", k2[8:12])[0]
 
                     parse_connect(None, packet.data)
+
+                # We know our PID now, get the user ready.
+                print(pid)
+                self.user = persistence.User.get(pid)
 
                 packet_out = PRUDPV0PacketOut(client=self)
                 packet_out.source = 0xa1
